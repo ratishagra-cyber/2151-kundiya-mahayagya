@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/* =========================================================================
+   Mobile & Touch Interface Scrollbar Suppression & Gesture Physics
+   ========================================================================= */
+
+/* 1. Global Touch & Mobile: Completely hide all scrollbar tracks & thumbs */
+@media (hover: none) and (pointer: coarse), (max-width: 1024px) {
+  html,
+  body,
+  *,
+  *::before,
+  *::after {
+    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important; /* IE and Edge */
+  }
+
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-thumb,
+  *::-webkit-scrollbar-corner {
+    display: none !important;
+    background: transparent !important;
+    border: none !important;
+  }
+}
+
+/* 2. Utility for explicit zero-scrollbar elements on any device */
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar::-webkit-scrollbar-track,
+.no-scrollbar::-webkit-scrollbar-thumb {
+  display: none !important;
+}
+
+/* 3. Fluid momentum touch scrolling & edge-to-edge touch responsiveness */
+html,
+body {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-y: none;
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Allow horizontal swipe containers to glide naturally on touch screens */
+[class*="overflow-x-auto"],
+[class*="overflow-y-auto"],
+[class*="overflow-auto"] {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 4. Print stylesheet */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .print-hidden, header, footer, button, .no-print {
+    display: none !important;
+  }
+}

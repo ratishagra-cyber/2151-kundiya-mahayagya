@@ -1,0 +1,6 @@
+{
+  "name": "2151 Kundiya Mahayagya Digital Registration & Event Management",
+  "description": "Mobile-first digital registration, best-fit kund allocation, and occupancy management platform for the 2151 Kundiya Mahayagya in Agra (14–21 Dec 2026).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
