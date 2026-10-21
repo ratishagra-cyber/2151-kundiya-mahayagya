@@ -181,8 +181,14 @@ export const PassCard: React.FC<PassCardProps> = ({
                   +91 {booking.yagyakarta.primaryMobile}
                   {booking.yagyakarta.secondaryMobile ? ` · Alt: +91 ${booking.yagyakarta.secondaryMobile}` : ''}
                 </div>
+                {booking.yagyakarta.address && (
+                  <div className="text-stone-700 font-medium text-[11px] leading-snug">
+                    <span className="font-semibold text-stone-900">{lang === 'hi' ? 'पता: ' : 'Address: '}</span>
+                    {booking.yagyakarta.address}
+                  </div>
+                )}
                 <div className="text-stone-600">
-                  {booking.yagyakarta.city}, {booking.yagyakarta.state}
+                  {booking.yagyakarta.city}, {booking.yagyakarta.state} {booking.yagyakarta.pincode ? `- ${booking.yagyakarta.pincode}` : ''}
                   {booking.yagyakarta.gotra ? ` · Gotra: ${booking.yagyakarta.gotra}` : ''}
                 </div>
               </div>

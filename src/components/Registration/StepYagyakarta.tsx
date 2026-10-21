@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Phone, MapPin, Mail, Sparkles, AlertCircle, ChevronRight } from 'lucide-react';
+import { User, Phone, MapPin, Mail, Home, AlertCircle, ChevronRight } from 'lucide-react';
 import { YagyakartaDetails } from '../../types';
 
 interface StepYagyakartaProps {
@@ -25,6 +25,9 @@ export const StepYagyakarta: React.FC<StepYagyakartaProps> = ({
     const cleanPhone = details.primaryMobile.replace(/\D/g, '');
     if (!cleanPhone || cleanPhone.length !== 10) {
       newErrors.primaryMobile = lang === 'hi' ? 'कृपया 10 अंकों का मान्य मोबाइल नंबर दर्ज करें' : 'Valid 10-digit mobile number required';
+    }
+    if (!details.address || !details.address.trim()) {
+      newErrors.address = lang === 'hi' ? 'पूरा आवासीय पता अनिवार्य है' : 'Full residential address is required';
     }
     if (!details.city.trim()) {
       newErrors.city = lang === 'hi' ? 'शहर का नाम अनिवार्य है' : 'City is required';
@@ -169,6 +172,33 @@ export const StepYagyakarta: React.FC<StepYagyakartaProps> = ({
               }`}
             />
           </div>
+        </div>
+
+        {/* Full Residential Address (Mandatory) */}
+        <div className="md:col-span-2">
+          <label className="block text-xs font-bold text-stone-800 mb-1">
+            {lang === 'hi' ? 'स्थायी / आवासीय पता (अनिवार्य) *' : 'Residential Address (Mandatory) *'}
+          </label>
+          <div className="relative">
+            <div className="absolute top-3 left-3 flex items-center pointer-events-none text-stone-400">
+              <Home className="w-4 h-4" />
+            </div>
+            <textarea
+              rows={2}
+              required
+              value={details.address || ''}
+              onChange={(e) => onChange({ ...details, address: e.target.value })}
+              placeholder={
+                lang === 'hi'
+                  ? 'मकान / भवन संख्या, गली / मार्ग, मोहल्ला / क्षेत्र (उदा. 42-बी, कमला नगर)'
+                  : 'House / Flat No., Street, Landmark, Area (e.g. 42-B, Kamla Nagar)'
+              }
+              className={`w-full pl-10 pr-3 py-2 text-sm rounded-xl border bg-white focus:outline-none transition-colors ${
+                errors.address ? 'border-rose-500 bg-rose-50/20' : 'border-stone-300 focus:border-amber-600 focus:ring-1 focus:ring-amber-500'
+              }`}
+            />
+          </div>
+          {errors.address && <p className="text-xs text-rose-600 mt-1">{errors.address}</p>}
         </div>
 
         {/* City */}

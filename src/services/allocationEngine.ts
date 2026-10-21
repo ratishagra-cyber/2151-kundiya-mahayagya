@@ -192,7 +192,7 @@ export function allocateBestFitKunds(
     simulatedBookings.push({
       id: 'temp-in-flight',
       createdAt: new Date().toISOString(),
-      yagyakarta: { fullName: '', primaryMobile: '', city: '', state: '', pincode: '' },
+      yagyakarta: { fullName: '', primaryMobile: '', address: '', city: '', state: '', pincode: '' },
       participants: [],
       allocations: [newAlloc],
       status: 'confirmed',

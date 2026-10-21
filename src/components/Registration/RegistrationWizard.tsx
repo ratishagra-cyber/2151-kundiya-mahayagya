@@ -28,6 +28,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
     primaryMobile: '',
     secondaryMobile: '',
     email: '',
+    address: '',
     city: '',
     state: 'Uttar Pradesh',
     pincode: '',
@@ -66,6 +67,17 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
     setAllocationError(null);
 
     try {
+      // Validate mandatory coordinator address
+      if (!yagyakarta.address || !yagyakarta.address.trim()) {
+        setAllocationError(
+          lang === 'hi'
+            ? 'कृपया मुख्य समन्वयक का आवासीय पता भरें (चरण 1)।'
+            : 'Coordinator residential address is required (Step 1).'
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       // 1. Build family-level session allocation requests
       // All registered participants attend each selected session together
       const familyMemberIds = participants.map((p) => p.id);
@@ -133,7 +145,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
         status: 'confirmed',
       };
 
-      // 5. Persist booking record via saveRegistration
+      // 5. Persist booking record via saveRegistration (calls POST /api/register with localStorage fallback)
       const saveResult = await saveRegistration(newBooking);
 
       if (!saveResult.success) {
@@ -147,13 +159,18 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
         return;
       }
 
-      // Use confirmed booking code
+      // 6. Use confirmed booking code & server returned data
       const confirmedBookingData: Booking = {
         ...newBooking,
-        id: saveResult.bookingCode || newBookingId,
+        ...(saveResult.data || {}),
+        id: saveResult.bookingCode || saveResult.data?.id || newBookingId,
+        yagyakarta: {
+          ...newBooking.yagyakarta,
+          ...(saveResult.data?.yagyakarta || {}),
+        },
       };
 
-      // 6. Confetti celebration
+      // 7. Confetti celebration
       try {
         confetti({
           particleCount: 80,
@@ -165,7 +182,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
         // ignore confetti failures
       }
 
-      // 7. Route to Confirmation View
+      // 8. Route to Confirmation View
       onBookingComplete(confirmedBookingData);
     } catch (e: any) {
       setAllocationError(e.message || 'An unexpected error occurred during allocation.');

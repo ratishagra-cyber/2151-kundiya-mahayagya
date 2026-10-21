@@ -138,6 +138,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                       <span className="font-mono">+91 {b.yagyakarta.primaryMobile}</span>
                       <span>·</span>
                       <span>{b.yagyakarta.city}, {b.yagyakarta.state}</span>
+                      {b.yagyakarta.address && <span className="truncate max-w-xs text-stone-500">· {b.yagyakarta.address}</span>}
                     </div>
                   </div>
                 </div>

@@ -111,8 +111,14 @@ export const StepReview: React.FC<StepReviewProps> = ({
             +91 {yagyakarta.primaryMobile}
             {yagyakarta.secondaryMobile ? ` · Alt: +91 ${yagyakarta.secondaryMobile}` : ''}
           </div>
+          {yagyakarta.address && (
+            <div className="text-stone-700 bg-stone-50 p-1.5 rounded-lg border border-stone-200/80 text-[11px] leading-snug">
+              <span className="font-semibold text-stone-900">{lang === 'hi' ? 'पता: ' : 'Address: '}</span>
+              {yagyakarta.address}
+            </div>
+          )}
           <div className="text-stone-600">
-            {yagyakarta.city}, {yagyakarta.state} {yagyakarta.gotra ? `· Gotra: ${yagyakarta.gotra}` : ''}
+            {yagyakarta.city}, {yagyakarta.state} {yagyakarta.pincode ? `- ${yagyakarta.pincode}` : ''} {yagyakarta.gotra ? `· Gotra: ${yagyakarta.gotra}` : ''}
           </div>
         </div>
 

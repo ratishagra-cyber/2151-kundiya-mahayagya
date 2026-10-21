@@ -23,6 +23,7 @@ export interface YagyakartaDetails {
   primaryMobile: string;
   secondaryMobile?: string;
   email?: string;
+  address: string;
   city: string;
   state: string;
   pincode: string;

@@ -368,6 +368,7 @@ export function exportExcelReport(
           'Yagyakarta (Coordinator)': b.yagyakarta.fullName,
           'Primary Mobile': b.yagyakarta.primaryMobile,
           'Alternate Mobile': b.yagyakarta.secondaryMobile || 'N/A',
+          'Address': b.yagyakarta.address || 'N/A',
           'City': b.yagyakarta.city,
           'State': b.yagyakarta.state,
           'Gotra': b.yagyakarta.gotra || 'N/A',
