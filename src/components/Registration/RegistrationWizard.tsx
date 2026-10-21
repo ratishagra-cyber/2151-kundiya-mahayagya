@@ -7,7 +7,8 @@ import { StepReview } from './StepReview';
 import { YagyakartaDetails, Participant, Booking, SessionType } from '../../types';
 import { createDefaultSchedule, EVENT_DAYS } from '../../data/eventConfig';
 import { allocateBestFitKunds } from '../../services/allocationEngine';
-import { getStoredBookings, addBooking } from '../../services/storageService';
+import { getStoredBookings } from '../../services/storageService';
+import { saveRegistration } from '../../services/registration';
 import { Check, User, Users, Calendar, ShieldCheck } from 'lucide-react';
 
 interface RegistrationWizardProps {
@@ -106,8 +107,25 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
         status: 'confirmed',
       };
 
-      // 5. Save to storage
-      addBooking(newBooking);
+      // 5. Save to Supabase (and local storage backup) via saveRegistration
+      const saveResult = await saveRegistration(newBooking);
+
+      if (!saveResult.success) {
+        setAllocationError(
+          saveResult.error ||
+            (lang === 'hi'
+              ? 'डेटाबेस में पंजीकरण सहेजने में विफल। कृपया पुनः प्रयास करें।'
+              : 'Failed to save registration to database. Please try again.')
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Use the confirmed booking code
+      const confirmedBookingData: Booking = {
+        ...newBooking,
+        id: saveResult.bookingCode || newBookingId,
+      };
 
       // 6. Confetti celebration
       try {
@@ -122,7 +140,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
       }
 
       // 7. Route to Confirmation View
-      onBookingComplete(newBooking);
+      onBookingComplete(confirmedBookingData);
     } catch (e: any) {
       setAllocationError(e.message || 'An unexpected error occurred during allocation.');
     } finally {
