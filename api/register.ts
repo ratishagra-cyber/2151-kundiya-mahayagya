@@ -8,17 +8,43 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const {
-      yagyakarta_name,
-      primary_mobile,
-      secondary_mobile,
-      email,
-      city,
-      state,
-      gotra,
-      participants,
-      sessions,
-    } = req.body;
+    const body = req.body || {};
+
+    // Accept multiple possible field names from the frontend
+    const yagyakarta_name =
+      body.yagyakarta_name ||
+      body.yagyakartaName ||
+      body.name ||
+      body.coordinatorName ||
+      '';
+
+    const primary_mobile =
+      body.primary_mobile ||
+      body.primaryMobile ||
+      body.mobile ||
+      body.phone ||
+      '';
+
+    const secondary_mobile =
+      body.secondary_mobile ||
+      body.secondaryMobile ||
+      body.altMobile ||
+      body.alternateMobile ||
+      null;
+
+    const email = body.email || null;
+    const city = body.city || '';
+    const state = body.state || null;
+    const gotra = body.gotra || null;
+
+    const participants = body.participants || body.members || [];
+    const sessions = body.sessions || body.selectedSessions || [];
+
+    if (!yagyakarta_name || !primary_mobile || !city) {
+      return res.status(400).json({
+        error: 'Missing required fields: yagyakarta_name, primary_mobile, city',
+      });
+    }
 
     const bookingCode = 'MYA-' + Date.now().toString().slice(-8);
 
@@ -33,11 +59,18 @@ export default async function handler(req: any, res: any) {
       returning id, booking_code
     `;
 
-    if (participants?.length) {
+    if (Array.isArray(participants) && participants.length > 0) {
       for (const p of participants) {
         await sql`
           insert into participants (booking_id, name, age, gender, relationship, mobile)
-          values (${booking.id}, ${p.name}, ${p.age}, ${p.gender}, ${p.relationship}, ${p.mobile})
+          values (
+            ${booking.id},
+            ${p.name || p.fullName || ''},
+            ${p.age || null},
+            ${p.gender || null},
+            ${p.relationship || null},
+            ${p.mobile || p.phone || null}
+          )
         `;
       }
     }
