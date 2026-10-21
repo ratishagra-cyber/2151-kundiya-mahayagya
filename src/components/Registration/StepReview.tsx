@@ -1,11 +1,12 @@
 import React from 'react';
-import { ShieldCheck, Flame, Users, Calendar, Phone, CheckCircle2, ChevronDown, ChevronUp, AlertCircle, ArrowLeft } from 'lucide-react';
-import { Participant, YagyakartaDetails } from '../../types';
+import { ShieldCheck, Flame, Users, Calendar, Phone, CheckCircle2, ChevronDown, ChevronUp, AlertCircle, ArrowLeft, Sun, Sunset } from 'lucide-react';
+import { Participant, YagyakartaDetails, DaySchedule } from '../../types';
 import { EVENT_DAYS } from '../../data/eventConfig';
 
 interface StepReviewProps {
   yagyakarta: YagyakartaDetails;
   participants: Participant[];
+  familySchedule: DaySchedule[];
   onConfirm: () => void;
   onPrev: () => void;
   isSubmitting: boolean;
@@ -16,6 +17,7 @@ interface StepReviewProps {
 export const StepReview: React.FC<StepReviewProps> = ({
   yagyakarta,
   participants,
+  familySchedule,
   onConfirm,
   onPrev,
   isSubmitting,
@@ -24,28 +26,26 @@ export const StepReview: React.FC<StepReviewProps> = ({
 }) => {
   const [showDetailedSchedule, setShowDetailedSchedule] = React.useState(false);
 
-  // Aggregate sessions
+  // Aggregate active days and sessions selected for the entire family
   const activeDaysSummary: {
     date: string;
     dayLabel: string;
-    morningCount: number;
-    afternoonCount: number;
+    morning: boolean;
+    afternoon: boolean;
   }[] = [];
 
-  let totalSessionAttendances = 0;
+  let totalSessions = 0;
 
   for (const day of EVENT_DAYS) {
-    const morningCount = participants.filter((p) => p.schedule.find((s) => s.date === day.date)?.morning).length;
-    const afternoonCount = participants.filter((p) => p.schedule.find((s) => s.date === day.date)?.afternoon).length;
-
-    if (morningCount > 0 || afternoonCount > 0) {
+    const sched = familySchedule.find((s) => s.date === day.date);
+    if (sched && (sched.morning || sched.afternoon)) {
       activeDaysSummary.push({
         date: day.date,
         dayLabel: day.shortLabel,
-        morningCount,
-        afternoonCount,
+        morning: sched.morning,
+        afternoon: sched.afternoon,
       });
-      totalSessionAttendances += (morningCount + afternoonCount);
+      totalSessions += (sched.morning ? 1 : 0) + (sched.afternoon ? 1 : 0);
     }
   }
 
@@ -84,7 +84,7 @@ export const StepReview: React.FC<StepReviewProps> = ({
       </div>
 
       {/* RETAINED: Family Integrity Guarantee Messaging */}
-      <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-300/80 flex items-start gap-3">
+      <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-300/80 flex items-start gap-3">
         <ShieldCheck className="w-5 h-5 text-amber-700 mt-0.5 shrink-0" />
         <div className="text-xs space-y-1">
           <div className="font-bold text-amber-950">
@@ -92,13 +92,13 @@ export const StepReview: React.FC<StepReviewProps> = ({
           </div>
           <p className="text-stone-700 leading-relaxed text-[11px]">
             {lang === 'hi'
-              ? 'परिवार के सभी सदस्य प्रत्येक सत्र में एक ही कुंड पर एक साथ बैठेंगे। किसी भी सदस्य को अलग नहीं किया जाएगा।'
-              : 'All attending members of your family will be seated side-by-side at the same Kund. No family members will ever be separated.'}
+              ? `परिवार के सभी ${participants.length} सदस्य प्रत्येक सत्र में एक ही कुंड पर एक साथ बैठेंगे। किसी भी सदस्य को अलग नहीं किया जाएगा।`
+              : `All ${participants.length} family members will be seated together at the same Kund for every session. Families are never separated.`}
           </p>
         </div>
       </div>
 
-      {/* Concise Summary Cards (Default Concise View) */}
+      {/* Concise Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         
         {/* Card 1: Coordinator */}
@@ -116,14 +116,14 @@ export const StepReview: React.FC<StepReviewProps> = ({
           </div>
         </div>
 
-        {/* Card 2: Devotees & Schedule Overview */}
+        {/* Card 2: Family Devotees & Schedule Overview */}
         <div className="p-4 rounded-2xl border border-stone-200 bg-white shadow-2xs space-y-2 text-xs">
           <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-            {lang === 'hi' ? 'समूह विवरण' : 'Devotees & Attendance'}
+            {lang === 'hi' ? 'परिवार साधक विवरण' : 'Family Devotees & Attendance'}
           </div>
           <div className="flex items-center justify-between">
             <span className="font-bold text-stone-900 text-sm">
-              {participants.length} {lang === 'hi' ? 'साधक सदस्य' : 'Devotee Members'}
+              {participants.length} {lang === 'hi' ? 'पारिवारिक सदस्य' : 'Family Members'}
             </span>
             <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
               {participants.length >= 3 ? `${uniqueMobiles.length} Phones Verified` : 'Verified'}
@@ -131,7 +131,7 @@ export const StepReview: React.FC<StepReviewProps> = ({
           </div>
           <div className="text-stone-600">
             <span>{activeDaysSummary.length} {lang === 'hi' ? 'दिनों में कुल' : 'days total ·'} </span>
-            <span className="font-semibold text-stone-900">{totalSessionAttendances} {lang === 'hi' ? 'सत्र आहुति' : 'session attendances'}</span>
+            <span className="font-semibold text-stone-900">{totalSessions} {lang === 'hi' ? 'पारिवारिक सत्र' : 'family sessions'}</span>
           </div>
           <div className="text-[11px] text-stone-500 truncate">
             {participants.map((p) => p.name).join(', ')}
@@ -140,15 +140,16 @@ export const StepReview: React.FC<StepReviewProps> = ({
 
       </div>
 
-      {/* CONCISE SCHEDULE WITH OPTIONAL EXPAND TOGGLE */}
+      {/* FAMILY-LEVEL SCHEDULE SUMMARY */}
       <div className="p-4 rounded-2xl border border-stone-200 bg-white shadow-2xs space-y-3 text-xs">
         <div className="flex items-center justify-between">
           <div>
             <div className="font-bold text-stone-900 text-xs">
-              {lang === 'hi' ? 'सत्र उपस्थिति सारांश' : 'Booked Sessions Matrix'}
+              {lang === 'hi' ? 'परिवार सत्र सारिणी (सभी सदस्य एक साथ)' : 'Family Session Schedule (All Members Together)'}
             </div>
             <div className="text-[11px] text-stone-500">
-              {activeDaysSummary.length} {lang === 'hi' ? 'सक्रिय दिवस चयनित' : 'active days scheduled'}
+              {activeDaysSummary.length} {lang === 'hi' ? 'दिवसों में कुल' : 'days scheduled ·'}{' '}
+              <span className="font-semibold text-amber-900">{totalSessions} {lang === 'hi' ? 'सत्र' : 'sessions'}</span>
             </div>
           </div>
 
@@ -157,49 +158,63 @@ export const StepReview: React.FC<StepReviewProps> = ({
             onClick={() => setShowDetailedSchedule(!showDetailedSchedule)}
             className="min-h-[44px] px-3 text-xs font-semibold text-rose-900 hover:text-rose-950 flex items-center gap-1 cursor-pointer"
           >
-            <span>{showDetailedSchedule ? (lang === 'hi' ? 'संक्षिप्त करें' : 'Hide details') : (lang === 'hi' ? 'विस्तार से देखें' : 'View full breakdown')}</span>
+            <span>
+              {showDetailedSchedule
+                ? (lang === 'hi' ? 'संक्षिप्त करें' : 'Hide details')
+                : (lang === 'hi' ? 'विस्तार से देखें' : 'View full breakdown')}
+            </span>
             {showDetailedSchedule ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
 
-        {/* Compact Bar by Default */}
+        {/* Compact Chips Overview */}
         <div className="flex flex-wrap gap-2">
           {activeDaysSummary.map((d) => (
-            <div key={d.date} className="px-2.5 py-1.5 rounded-xl bg-stone-50 border border-stone-200 text-xs font-medium">
-              <span className="font-bold text-stone-900">{d.dayLabel}: </span>
-              {d.morningCount > 0 && <span className="text-amber-800">☀️ {d.morningCount}p </span>}
-              {d.afternoonCount > 0 && <span className="text-rose-800">🌅 {d.afternoonCount}p</span>}
+            <div key={d.date} className="px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 text-xs font-medium flex items-center gap-2">
+              <span className="font-bold text-stone-900">{d.dayLabel}:</span>
+              {d.morning && (
+                <span className="inline-flex items-center gap-0.5 text-amber-900 font-semibold bg-amber-100/70 px-2 py-0.5 rounded-md text-[11px]">
+                  <Sun className="w-3 h-3 text-amber-600" />
+                  <span>Morning</span>
+                </span>
+              )}
+              {d.afternoon && (
+                <span className="inline-flex items-center gap-0.5 text-rose-900 font-semibold bg-rose-100/70 px-2 py-0.5 rounded-md text-[11px]">
+                  <Sunset className="w-3 h-3 text-rose-600" />
+                  <span>Afternoon</span>
+                </span>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Expanded Detailed Matrix */}
+        {/* Detailed Breakdown Card */}
         {showDetailedSchedule && (
           <div className="pt-3 border-t border-stone-100 space-y-2 animate-in fade-in duration-150">
-            {activeDaysSummary.map((d) => {
-              const morningNames = participants
-                .filter((p) => p.schedule.find((s) => s.date === d.date)?.morning)
-                .map((p) => p.name);
-              const afternoonNames = participants
-                .filter((p) => p.schedule.find((s) => s.date === d.date)?.afternoon)
-                .map((p) => p.name);
-
-              return (
-                <div key={d.date} className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 text-[11px] space-y-1">
-                  <div className="font-bold text-stone-900">{d.date} ({d.dayLabel})</div>
-                  {morningNames.length > 0 && (
-                    <div className="text-stone-600">
-                      <span className="font-semibold text-amber-900">☀️ Morning (8-11 AM):</span> {morningNames.join(', ')}
+            {activeDaysSummary.map((d) => (
+              <div key={d.date} className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 text-[11px] space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-stone-900 text-xs">{d.date} ({d.dayLabel})</span>
+                  <span className="text-stone-500 font-semibold">
+                    {participants.length} {lang === 'hi' ? 'सदस्य एक साथ' : 'Members Together'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 text-stone-700">
+                  {d.morning && (
+                    <div className="px-2.5 py-1 rounded-lg bg-amber-100/60 border border-amber-300 text-amber-950 flex items-center gap-1.5">
+                      <Sun className="w-3.5 h-3.5 text-amber-600" />
+                      <span><strong>{lang === 'hi' ? 'प्रातः सत्र:' : 'Morning Session:'}</strong> 8:00 AM – 11:00 AM</span>
                     </div>
                   )}
-                  {afternoonNames.length > 0 && (
-                    <div className="text-stone-600">
-                      <span className="font-semibold text-rose-900">🌅 Afternoon (1-4 PM):</span> {afternoonNames.join(', ')}
+                  {d.afternoon && (
+                    <div className="px-2.5 py-1 rounded-lg bg-rose-100/60 border border-rose-300 text-rose-950 flex items-center gap-1.5">
+                      <Sunset className="w-3.5 h-3.5 text-rose-600" />
+                      <span><strong>{lang === 'hi' ? 'दोपहर सत्र:' : 'Afternoon Session:'}</strong> 1:00 PM – 4:00 PM</span>
                     </div>
                   )}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>

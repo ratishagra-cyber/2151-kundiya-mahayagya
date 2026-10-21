@@ -181,8 +181,8 @@ export const DesignSpecModal: React.FC<DesignSpecModalProps> = ({
                       <p className="text-[11px] text-stone-500 mt-1">Adds 1–8 family members. System prompts for secondary mobile if ≥3 members.</p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white border border-stone-200">
-                      <div className="font-bold text-stone-900">4. Session Schedule</div>
-                      <p className="text-[11px] text-stone-500 mt-1">Uses 1-tap batch preset or selects independent Morning/Afternoon sessions across 8 days.</p>
+                      <div className="font-bold text-stone-900">4. Family Sessions</div>
+                      <p className="text-[11px] text-stone-500 mt-1">Selects dates and sessions once for the entire family across the 8-day calendar.</p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white border border-stone-200">
                       <div className="font-bold text-stone-900">5. Allocation &amp; Pass</div>

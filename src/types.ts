@@ -44,6 +44,7 @@ export interface Booking {
   createdAt: string;
   yagyakarta: YagyakartaDetails;
   participants: Participant[];
+  familySchedule?: DaySchedule[];
   allocations: AllocatedSession[];
   status: 'confirmed' | 'partially_cancelled' | 'cancelled';
   notes?: string;

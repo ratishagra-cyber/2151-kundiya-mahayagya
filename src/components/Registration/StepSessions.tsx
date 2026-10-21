@@ -1,153 +1,127 @@
 import React from 'react';
-import { Calendar, Sun, Sunset, Copy, Sparkles, Check, AlertCircle, User, ChevronRight, ArrowLeft } from 'lucide-react';
-import { Participant, SessionType } from '../../types';
+import { Calendar, Sun, Sunset, Sparkles, Check, AlertCircle, Users, ArrowLeft, ChevronRight, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Participant, DaySchedule, SessionType } from '../../types';
 import { EVENT_DAYS } from '../../data/eventConfig';
 
 interface StepSessionsProps {
+  familySchedule: DaySchedule[];
+  setFamilySchedule: React.Dispatch<React.SetStateAction<DaySchedule[]>>;
   participants: Participant[];
-  setParticipants: React.Dispatch<React.SetStateAction<Participant[]>>;
   onNext: () => void;
   onPrev: () => void;
   lang: 'en' | 'hi';
 }
 
 export const StepSessions: React.FC<StepSessionsProps> = ({
+  familySchedule,
+  setFamilySchedule,
   participants,
-  setParticipants,
   onNext,
   onPrev,
   lang,
 }) => {
-  const [activeParticipantIndex, setActiveParticipantIndex] = React.useState(0);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
-  const activeParticipant = participants[activeParticipantIndex] || participants[0];
-
-  // Helper to toggle specific session
+  // Toggle single session for the entire family
   const toggleSession = (date: string, session: SessionType) => {
-    setParticipants((prev) =>
-      prev.map((p, idx) => {
-        if (idx !== activeParticipantIndex) return p;
-
-        const updatedSchedule = p.schedule.map((day) => {
-          if (day.date === date) {
-            return {
-              ...day,
-              [session]: !day[session],
-            };
-          }
-          return day;
-        });
-
-        return { ...p, schedule: updatedSchedule };
+    setFamilySchedule((prev) =>
+      prev.map((day) => {
+        if (day.date === date) {
+          return {
+            ...day,
+            [session]: !day[session],
+          };
+        }
+        return day;
       })
     );
     setErrorMessage(null);
   };
 
-  // Proper toggle button for whole day
+  // Toggle both morning and afternoon for a given date
   const toggleWholeDay = (date: string) => {
-    setParticipants((prev) =>
-      prev.map((p, idx) => {
-        if (idx !== activeParticipantIndex) return p;
-
-        const dayItem = p.schedule.find((d) => d.date === date);
-        const bothActive = dayItem?.morning && dayItem?.afternoon;
-
-        const updatedSchedule = p.schedule.map((day) => {
-          if (day.date === date) {
-            return {
-              ...day,
-              morning: !bothActive,
-              afternoon: !bothActive,
-            };
-          }
-          return day;
-        });
-
-        return { ...p, schedule: updatedSchedule };
+    setFamilySchedule((prev) =>
+      prev.map((day) => {
+        if (day.date === date) {
+          const bothActive = day.morning && day.afternoon;
+          return {
+            ...day,
+            morning: !bothActive,
+            afternoon: !bothActive,
+          };
+        }
+        return day;
       })
     );
     setErrorMessage(null);
   };
 
-  // Presets
+  // Presets for the entire family
   const applyAllDaysBoth = () => {
-    setParticipants((prev) =>
-      prev.map((p) => ({
-        ...p,
-        schedule: EVENT_DAYS.map((d) => ({
-          date: d.date,
-          dayLabel: d.shortLabel,
-          morning: true,
-          afternoon: true,
-        })),
+    setFamilySchedule(
+      EVENT_DAYS.map((d) => ({
+        date: d.date,
+        dayLabel: d.shortLabel,
+        morning: true,
+        afternoon: true,
       }))
     );
+    setErrorMessage(null);
   };
 
   const applyAllDaysMorning = () => {
-    setParticipants((prev) =>
-      prev.map((p) => ({
-        ...p,
-        schedule: EVENT_DAYS.map((d) => ({
-          date: d.date,
-          dayLabel: d.shortLabel,
-          morning: true,
-          afternoon: false,
-        })),
+    setFamilySchedule(
+      EVENT_DAYS.map((d) => ({
+        date: d.date,
+        dayLabel: d.shortLabel,
+        morning: true,
+        afternoon: false,
       }))
     );
+    setErrorMessage(null);
   };
 
   const applyWeekendOnly = () => {
-    setParticipants((prev) =>
-      prev.map((p) => ({
-        ...p,
-        schedule: EVENT_DAYS.map((d) => {
-          const isWeekend = d.date === '2026-12-19' || d.date === '2026-12-20';
-          return {
-            date: d.date,
-            dayLabel: d.shortLabel,
-            morning: isWeekend,
-            afternoon: isWeekend,
-          };
-        }),
-      }))
-    );
-  };
-
-  const copyCoordinatorScheduleToAll = () => {
-    const coordinatorSchedule = participants[0]?.schedule;
-    if (!coordinatorSchedule) return;
-
-    setParticipants((prev) =>
-      prev.map((p, idx) => {
-        if (idx === 0) return p;
+    setFamilySchedule(
+      EVENT_DAYS.map((d) => {
+        const isWeekend = d.date === '2026-12-19' || d.date === '2026-12-20';
         return {
-          ...p,
-          schedule: JSON.parse(JSON.stringify(coordinatorSchedule)),
+          date: d.date,
+          dayLabel: d.shortLabel,
+          morning: isWeekend,
+          afternoon: isWeekend,
         };
       })
     );
+    setErrorMessage(null);
   };
 
-  const totalSelectedSessions = participants.reduce((total, p) => {
-    return (
-      total +
-      p.schedule.reduce(
-        (dayTotal, d) => dayTotal + (d.morning ? 1 : 0) + (d.afternoon ? 1 : 0),
-        0
-      )
+  const clearAllSessions = () => {
+    setFamilySchedule(
+      EVENT_DAYS.map((d) => ({
+        date: d.date,
+        dayLabel: d.shortLabel,
+        morning: false,
+        afternoon: false,
+      }))
     );
-  }, 0);
+    setErrorMessage(null);
+  };
+
+  // Total session count for the family
+  const totalFamilySessions = familySchedule.reduce(
+    (total, d) => total + (d.morning ? 1 : 0) + (d.afternoon ? 1 : 0),
+    0
+  );
+
+  const activeDaysCount = familySchedule.filter((d) => d.morning || d.afternoon).length;
 
   const handleNext = () => {
-    if (totalSelectedSessions === 0) {
+    if (totalFamilySessions === 0) {
       setErrorMessage(
         lang === 'hi'
-          ? 'कम से कम एक सत्र (प्रातः अथवा दोपहर) का चयन करना अनिवार्य है।'
-          : 'Please select at least one session for at least one member.'
+          ? 'कृपया अपने परिवार के लिए कम से कम एक सत्र (प्रातः अथवा दोपहर) का चयन करें।'
+          : 'Please select at least one session for your family.'
       );
       return;
     }
@@ -163,32 +137,67 @@ export const StepSessions: React.FC<StepSessionsProps> = ({
         <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 uppercase tracking-wide">
           <span>{lang === 'hi' ? 'चरण 3 / 4' : 'Step 3 of 4'}</span>
           <span>·</span>
-          <span>{lang === 'hi' ? '8-दिवसीय सत्र कैलेंडर' : '8-Day Session Calendar'}</span>
+          <span>{lang === 'hi' ? 'परिवार सत्र चयन' : 'Family Session Schedule'}</span>
         </div>
-        <div className="flex items-center justify-between gap-2 mt-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1">
           <div>
             <h2 className="text-xl font-bold font-serif text-stone-900">
-              {lang === 'hi' ? 'आहुति सत्र एवं तिथियां चुनें' : 'Select Dates & Daily Sessions'}
+              {lang === 'hi' ? 'परिवार के लिए आहुति सत्र एवं तिथियां चुनें' : 'Select Yagya Dates & Sessions for Your Family'}
             </h2>
-            <p className="text-xs text-stone-600">
+            <p className="text-xs text-stone-600 mt-0.5">
               {lang === 'hi'
-                ? 'प्रातः 8-11 अथवा दोपहर 1-4 बजे। सदस्य स्वतंत्र रूप से दिन चुन सकते हैं।'
-                : 'Morning 8–11 AM or Afternoon 1–4 PM across 14–21 Dec.'}
+                ? `चयनित सत्र पूरे परिवार (${participants.length} सदस्य) पर एक साथ लागू होंगे। परिवार एक ही कुंड पर बैठेगा।`
+                : `Selected sessions apply to all ${participants.length} family members together. You will be seated at the same Kund.`}
             </p>
           </div>
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-200 tabular-nums shrink-0">
-            {totalSelectedSessions} {lang === 'hi' ? 'सत्र' : 'Sessions'}
-          </span>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 tabular-nums shrink-0">
+              {totalFamilySessions} {lang === 'hi' ? 'सत्र चयनित' : 'Sessions Selected'}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* 1-Tap Quick Action Presets (Mobile Ergonomic) */}
+      {/* FAMILY REASSURANCE STRIP */}
+      <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-300/80 flex items-start gap-3">
+        <Users className="w-5 h-5 text-amber-700 mt-0.5 shrink-0" />
+        <div className="text-xs space-y-1 flex-1">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-amber-950">
+              {lang === 'hi'
+                ? `परिवार के सभी ${participants.length} सदस्य एक साथ भाग लेंगे`
+                : `All ${participants.length} Family Members Attend Together`}
+            </span>
+            <span className="text-[11px] font-semibold text-amber-800">
+              {activeDaysCount} / 8 {lang === 'hi' ? 'दिन सक्रिय' : 'Days Active'}
+            </span>
+          </div>
+          <p className="text-stone-600 text-[11px] leading-relaxed">
+            {lang === 'hi'
+              ? `साधक: ${participants.map((p) => p.name || 'सदस्य').join(', ')} — प्रत्येक चयनित सत्र में सभी सदस्य एक ही समर्पित कुंड पर बैठेंगे।`
+              : `Devotees: ${participants.map((p) => p.name || 'Member').join(', ')} — all members are allocated together at one physical Kund.`}
+          </p>
+        </div>
+      </div>
+
+      {/* 1-Tap Quick Action Presets (Apply to the entire family) */}
       <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
         <div className="flex items-center justify-between text-xs font-bold text-stone-800">
           <span className="flex items-center gap-1.5 text-amber-900">
             <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            <span>{lang === 'hi' ? '1-टैप त्वरित चयन (सभी सदस्यों पर लागू)' : '1-Tap Quick Batch Presets (Apply to All)'}</span>
+            <span>{lang === 'hi' ? '1-टैप त्वरित चयन (पूरे परिवार के लिए):' : '1-Tap Quick Presets for the Entire Family:'}</span>
           </span>
+          {totalFamilySessions > 0 && (
+            <button
+              type="button"
+              onClick={clearAllSessions}
+              className="text-[11px] text-stone-500 hover:text-rose-700 font-semibold flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>{lang === 'hi' ? 'रीसेट करें' : 'Clear All'}</span>
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2 pt-0.5">
@@ -197,7 +206,7 @@ export const StepSessions: React.FC<StepSessionsProps> = ({
             onClick={applyAllDaysBoth}
             className="min-h-[44px] px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 shadow-2xs transition-colors cursor-pointer"
           >
-            {lang === 'hi' ? 'पूर्ण 8 दिन (दोनों सत्र)' : 'All 8 Days (Both Sessions)'}
+            {lang === 'hi' ? 'पूर्ण 8 दिन (दोनों सत्र · 16 सत्र)' : 'All 8 Days (Both Sessions · 16 Total)'}
           </button>
           
           <button
@@ -205,7 +214,7 @@ export const StepSessions: React.FC<StepSessionsProps> = ({
             onClick={applyAllDaysMorning}
             className="min-h-[44px] px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 shadow-2xs transition-colors cursor-pointer"
           >
-            {lang === 'hi' ? 'सभी 8 दिन प्रातः (8–11 AM)' : 'All 8 Days Morning (8–11 AM)'}
+            {lang === 'hi' ? 'सभी 8 दिन प्रातः (8–11 AM · 8 सत्र)' : 'All 8 Days Morning (8–11 AM · 8 Total)'}
           </button>
 
           <button
@@ -213,63 +222,15 @@ export const StepSessions: React.FC<StepSessionsProps> = ({
             onClick={applyWeekendOnly}
             className="min-h-[44px] px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 shadow-2xs transition-colors cursor-pointer"
           >
-            {lang === 'hi' ? 'सप्ताहांत (19–20 Dec)' : 'Weekend Only (19–20 Dec)'}
+            {lang === 'hi' ? 'सप्ताहांत (19–20 Dec · 4 सत्र)' : 'Weekend Only (19–20 Dec · 4 Total)'}
           </button>
-
-          {participants.length > 1 && (
-            <button
-              type="button"
-              onClick={copyCoordinatorScheduleToAll}
-              className="min-h-[44px] px-3.5 py-2 text-xs font-semibold rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950 shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <Copy className="w-3 h-3 text-amber-700" />
-              <span>{lang === 'hi' ? 'समन्वयक का शेड्यूल कॉपी करें' : "Copy Coordinator's Schedule"}</span>
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Participant Selector Tabs (Clean Mobile Scroller without scrollbars) */}
-      <div>
-        <label className="block text-xs font-bold text-stone-700 mb-1.5">
-          {lang === 'hi' ? 'सदस्य का शेड्यूल बदलें:' : 'Active Devotee Schedule:'}
-        </label>
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {participants.map((p, idx) => {
-            const isSelected = idx === activeParticipantIndex;
-            const memberSessionCount = p.schedule.reduce(
-              (cnt, d) => cnt + (d.morning ? 1 : 0) + (d.afternoon ? 1 : 0),
-              0
-            );
-
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setActiveParticipantIndex(idx)}
-                className={`min-h-[44px] flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border cursor-pointer ${
-                  isSelected
-                    ? 'bg-rose-900 text-amber-100 border-rose-950 shadow-xs'
-                    : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                }`}
-              >
-                <span className="w-4 h-4 rounded-full bg-stone-200 text-stone-800 text-[10px] font-bold flex items-center justify-center font-mono">
-                  {idx + 1}
-                </span>
-                <span className="max-w-[110px] truncate">{p.name || `Member #${idx + 1}`}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/10 font-mono">
-                  {memberSessionCount}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 8-Day Calendar Cards */}
+      {/* 8-Day Calendar Cards (Single unified family selection) */}
       <div className="space-y-3">
         {EVENT_DAYS.map((day) => {
-          const scheduleItem = activeParticipant.schedule.find((s) => s.date === day.date) || {
+          const scheduleItem = familySchedule.find((s) => s.date === day.date) || {
             date: day.date,
             dayLabel: day.shortLabel,
             morning: false,
@@ -291,24 +252,24 @@ export const StepSessions: React.FC<StepSessionsProps> = ({
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 
-                {/* Day Header & Proper Button/Chip for Whole Day */}
+                {/* Day Header & Whole Day Chip Button */}
                 <div className="flex items-center justify-between sm:justify-start gap-2.5">
                   <div>
                     <div className="text-xs font-bold text-stone-900">{day.label}</div>
                     <div className="text-[11px] text-amber-900/80 font-medium">{day.tithi}</div>
                   </div>
 
-                  {/* PROPER BUTTON / CHIP FOR SELECT BOTH (Replacing small text link) */}
+                  {/* Whole Day Chip Button */}
                   <button
                     type="button"
                     onClick={() => toggleWholeDay(day.date)}
                     className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                       isFullDay
-                        ? 'bg-amber-100 border-amber-300 text-amber-950'
+                        ? 'bg-amber-100 border-amber-300 text-amber-950 font-bold'
                         : 'bg-white border-stone-300 text-stone-700 hover:bg-stone-100'
                     }`}
                   >
-                    {isFullDay ? '✓ Both' : '+ Both Sessions'}
+                    {isFullDay ? (lang === 'hi' ? '✓ दोनों सत्र' : '✓ Both Sessions') : (lang === 'hi' ? '+ दोनों सत्र' : '+ Both Sessions')}
                   </button>
                 </div>
 

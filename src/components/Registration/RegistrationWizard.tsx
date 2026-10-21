@@ -4,7 +4,7 @@ import { StepYagyakarta } from './StepYagyakarta';
 import { StepParticipants } from './StepParticipants';
 import { StepSessions } from './StepSessions';
 import { StepReview } from './StepReview';
-import { YagyakartaDetails, Participant, Booking, SessionType } from '../../types';
+import { YagyakartaDetails, Participant, Booking, SessionType, DaySchedule } from '../../types';
 import { createDefaultSchedule, EVENT_DAYS } from '../../data/eventConfig';
 import { allocateBestFitKunds } from '../../services/allocationEngine';
 import { getStoredBookings } from '../../services/storageService';
@@ -48,14 +48,17 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
     },
   ]);
 
+  // Family-level unified schedule across 8 days
+  const [familySchedule, setFamilySchedule] = React.useState<DaySchedule[]>(createDefaultSchedule());
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [allocationError, setAllocationError] = React.useState<string | null>(null);
 
   const steps = [
     { num: 1, labelEn: 'Coordinator', labelHi: 'समन्वयक', icon: User },
     { num: 2, labelEn: 'Members', labelHi: 'सदस्य (1-8)', icon: Users },
-    { num: 3, labelEn: 'Sessions', labelHi: 'सत्र चयन', icon: Calendar },
-    { num: 4, labelEn: 'Confirm & Kund', labelHi: 'कुंड आवंटन', icon: ShieldCheck },
+    { num: 3, labelEn: 'Family Sessions', labelHi: 'सत्र चयन', icon: Calendar },
+    { num: 4, labelEn: 'Confirm & Kund', labelHi: 'समीक्षा व आवंटन', icon: ShieldCheck },
   ];
 
   const handleFinalConfirm = async () => {
@@ -63,29 +66,45 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
     setAllocationError(null);
 
     try {
-      // 1. Build session allocation requests
+      // 1. Build family-level session allocation requests
+      // All registered participants attend each selected session together
+      const familyMemberIds = participants.map((p) => p.id);
       const allocationRequests: { date: string; session: SessionType; participantIds: string[] }[] = [];
 
       for (const day of EVENT_DAYS) {
-        const morningIds = participants
-          .filter((p) => p.schedule.find((s) => s.date === day.date)?.morning)
-          .map((p) => p.id);
-        if (morningIds.length > 0) {
-          allocationRequests.push({ date: day.date, session: 'morning', participantIds: morningIds });
+        const daySched = familySchedule.find((s) => s.date === day.date);
+
+        if (daySched?.morning) {
+          allocationRequests.push({
+            date: day.date,
+            session: 'morning',
+            participantIds: familyMemberIds,
+          });
         }
 
-        const afternoonIds = participants
-          .filter((p) => p.schedule.find((s) => s.date === day.date)?.afternoon)
-          .map((p) => p.id);
-        if (afternoonIds.length > 0) {
-          allocationRequests.push({ date: day.date, session: 'afternoon', participantIds: afternoonIds });
+        if (daySched?.afternoon) {
+          allocationRequests.push({
+            date: day.date,
+            session: 'afternoon',
+            participantIds: familyMemberIds,
+          });
         }
+      }
+
+      if (allocationRequests.length === 0) {
+        setAllocationError(
+          lang === 'hi'
+            ? 'कृपया परिवार के लिए कम से कम एक सत्र का चयन करें।'
+            : 'Please select at least one session for the family.'
+        );
+        setIsSubmitting(false);
+        return;
       }
 
       // 2. Fetch existing bookings from storage to check current Kund occupancies
       const existingBookings = getStoredBookings();
 
-      // 3. Run Best-Fit deterministic allocation engine
+      // 3. Run Best-Fit deterministic allocation engine with strict family integrity
       const result = allocateBestFitKunds(allocationRequests, existingBookings);
 
       if (!result.success) {
@@ -98,30 +117,37 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       const newBookingId = `MY-2026-${randomSuffix}`;
 
+      // Update all participants' schedules to match the unified family schedule
+      const participantsWithSchedule = participants.map((p) => ({
+        ...p,
+        schedule: familySchedule,
+      }));
+
       const newBooking: Booking = {
         id: newBookingId,
         createdAt: new Date().toISOString(),
         yagyakarta,
-        participants,
+        participants: participantsWithSchedule,
+        familySchedule,
         allocations: result.allocations,
         status: 'confirmed',
       };
 
-      // 5. Save to Supabase (and local storage backup) via saveRegistration
+      // 5. Persist booking record via saveRegistration
       const saveResult = await saveRegistration(newBooking);
 
       if (!saveResult.success) {
         setAllocationError(
           saveResult.error ||
             (lang === 'hi'
-              ? 'डेटाबेस में पंजीकरण सहेजने में विफल। कृपया पुनः प्रयास करें।'
-              : 'Failed to save registration to database. Please try again.')
+              ? 'पंजीकरण सहेजने में विफल। कृपया पुनः प्रयास करें।'
+              : 'Failed to save registration. Please try again.')
         );
         setIsSubmitting(false);
         return;
       }
 
-      // Use the confirmed booking code
+      // Use confirmed booking code
       const confirmedBookingData: Booking = {
         ...newBooking,
         id: saveResult.bookingCode || newBookingId,
@@ -227,8 +253,9 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
 
         {currentStep === 3 && (
           <StepSessions
+            familySchedule={familySchedule}
+            setFamilySchedule={setFamilySchedule}
             participants={participants}
-            setParticipants={setParticipants}
             onNext={() => setCurrentStep(4)}
             onPrev={() => setCurrentStep(2)}
             lang={lang}
@@ -239,6 +266,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
           <StepReview
             yagyakarta={yagyakarta}
             participants={participants}
+            familySchedule={familySchedule}
             onConfirm={handleFinalConfirm}
             onPrev={() => setCurrentStep(3)}
             isSubmitting={isSubmitting}

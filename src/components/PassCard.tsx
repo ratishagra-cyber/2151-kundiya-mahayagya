@@ -260,8 +260,11 @@ export const PassCard: React.FC<PassCardProps> = ({
 
           {/* Session Timetable */}
           <div className="space-y-2 pt-2 border-t border-stone-200">
-            <div className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-              {lang === 'hi' ? 'सत्र समय सारिणी' : 'Session Timetable'}
+            <div className="flex items-center justify-between text-xs font-bold text-stone-800 uppercase tracking-wider">
+              <span>{lang === 'hi' ? 'परिवार सत्र समय सारिणी' : 'Family Session Timetable'}</span>
+              <span className="text-[10px] text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full font-semibold normal-case">
+                {lang === 'hi' ? `सभी ${booking.participants.length} सदस्य एक साथ` : `All ${booking.participants.length} members together`}
+              </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {booking.allocations.map((alloc, idx) => (
