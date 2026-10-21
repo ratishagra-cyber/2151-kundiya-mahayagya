@@ -18,16 +18,20 @@ export default async function handler(req: any, res: any) {
     const city = y.city || '';
     const state = y.state || null;
     const gotra = y.gotra || null;
+    const pincode = y.pincode || null;
 
     const participants = body.participants || [];
+    const allocations = body.allocations || [];
+    const familySchedule = body.familySchedule || [];
 
     if (!yagyakarta_name || !primary_mobile || !city) {
       return res.status(400).json({
-        error: 'Missing required fields: yagyakarta_name, primary_mobile, city',
+        error: 'Missing required fields',
+        received: { yagyakarta_name, primary_mobile, city },
       });
     }
 
-    const bookingCode = body.bookingCode || 'MYA-' + Date.now().toString().slice(-8);
+    const bookingCode = body.bookingCode || body.id || 'MYA-' + Date.now().toString().slice(-8);
 
     const [booking] = await sql`
       insert into bookings (
@@ -56,7 +60,27 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    return res.status(200).json({ bookingCode, bookingId: booking.id });
+    // Return the shape the frontend expects so it can generate the pass
+    return res.status(200).json({
+      success: true,
+      bookingCode,
+      id: bookingCode,
+      bookingId: booking.id,
+      status: 'confirmed',
+      yagyakarta: {
+        fullName: yagyakarta_name,
+        primaryMobile: primary_mobile,
+        secondaryMobile: secondary_mobile,
+        email,
+        city,
+        state,
+        gotra,
+        pincode,
+      },
+      participants,
+      allocations,
+      familySchedule,
+    });
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ error: err.message });
