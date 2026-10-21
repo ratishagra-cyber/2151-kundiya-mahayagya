@@ -9,36 +9,17 @@ export default async function handler(req: any, res: any) {
 
   try {
     const body = req.body || {};
+    const y = body.yagyakarta || {};
 
-    // Accept multiple possible field names from the frontend
-    const yagyakarta_name =
-      body.yagyakarta_name ||
-      body.yagyakartaName ||
-      body.name ||
-      body.coordinatorName ||
-      '';
+    const yagyakarta_name = y.fullName || '';
+    const primary_mobile = y.primaryMobile || '';
+    const secondary_mobile = y.secondaryMobile || null;
+    const email = y.email || null;
+    const city = y.city || '';
+    const state = y.state || null;
+    const gotra = y.gotra || null;
 
-    const primary_mobile =
-      body.primary_mobile ||
-      body.primaryMobile ||
-      body.mobile ||
-      body.phone ||
-      '';
-
-    const secondary_mobile =
-      body.secondary_mobile ||
-      body.secondaryMobile ||
-      body.altMobile ||
-      body.alternateMobile ||
-      null;
-
-    const email = body.email || null;
-    const city = body.city || '';
-    const state = body.state || null;
-    const gotra = body.gotra || null;
-
-    const participants = body.participants || body.members || [];
-    const sessions = body.sessions || body.selectedSessions || [];
+    const participants = body.participants || [];
 
     if (!yagyakarta_name || !primary_mobile || !city) {
       return res.status(400).json({
@@ -46,7 +27,7 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    const bookingCode = 'MYA-' + Date.now().toString().slice(-8);
+    const bookingCode = body.bookingCode || 'MYA-' + Date.now().toString().slice(-8);
 
     const [booking] = await sql`
       insert into bookings (
@@ -65,11 +46,11 @@ export default async function handler(req: any, res: any) {
           insert into participants (booking_id, name, age, gender, relationship, mobile)
           values (
             ${booking.id},
-            ${p.name || p.fullName || ''},
+            ${p.name || ''},
             ${p.age || null},
             ${p.gender || null},
             ${p.relationship || null},
-            ${p.mobile || p.phone || null}
+            ${p.mobile || null}
           )
         `;
       }
