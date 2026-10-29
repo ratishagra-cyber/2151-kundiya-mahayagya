@@ -96,6 +96,8 @@ export default async function handler(req: any, res: any) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const {
         action = 'block', // 'block' | 'unblock'
+        kundNumbers: inKundNumbers,
+        kund_numbers: inKund_numbers,
         kundNumber: inKundNumber,
         kund_number: inKund_number,
         date: inDate,
@@ -107,24 +109,39 @@ export default async function handler(req: any, res: any) {
         blocked_by: inBlocked_by,
       } = body || {};
 
-      const kundNumber = Number(inKundNumber || inKund_number);
       const eventDate = (inDate || inEventDate || inEvent_date || '2026-12-14').trim();
       const session = (inSession || 'morning').trim().toLowerCase();
       const reason = inReason.trim();
       const blockedBy = (inBlockedBy || inBlocked_by || 'Admin').trim();
 
-      if (!kundNumber || kundNumber < 1 || kundNumber > 2151) {
+      // Collect target kund numbers from array or single number
+      let targetNumbers: number[] = [];
+      if (Array.isArray(inKundNumbers) || Array.isArray(inKund_numbers)) {
+        targetNumbers = (inKundNumbers || inKund_numbers)
+          .map((n: any) => Number(n))
+          .filter((n: number) => !isNaN(n) && n >= 1 && n <= 2151);
+      } else {
+        const single = Number(inKundNumber || inKund_number);
+        if (!isNaN(single) && single >= 1 && single <= 2151) {
+          targetNumbers = [single];
+        }
+      }
+
+      // Deduplicate numbers
+      targetNumbers = Array.from(new Set(targetNumbers));
+
+      if (targetNumbers.length === 0) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid kundNumber. Must be between 1 and 2151.',
+          error: 'Invalid or missing kundNumber(s). Must be numbers between 1 and 2151.',
         });
       }
 
       if (action === 'unblock') {
-        // Delete block from kund_blocks
+        // Delete blocks from kund_blocks for these kunds
         await sql`
           DELETE FROM kund_blocks
-          WHERE kund_number = ${kundNumber}
+          WHERE kund_number = ANY(${targetNumbers})
             AND event_date = ${eventDate}::date
             AND LOWER(session) = ${session};
         `;
@@ -132,48 +149,56 @@ export default async function handler(req: any, res: any) {
         return res.status(200).json({
           success: true,
           action: 'unblock',
-          kundNumber,
+          kundNumbers: targetNumbers,
+          count: targetNumbers.length,
           date: eventDate,
           session,
-          message: `Kund ${kundNumber} unblocked successfully for ${eventDate} (${session}).`,
+          message: targetNumbers.length === 1
+            ? `Kund ${targetNumbers[0]} unblocked successfully for ${eventDate} (${session}).`
+            : `Successfully unblocked ${targetNumbers.length} Kund(s) for ${eventDate} (${session}).`,
         });
       }
 
       // Action: block
-      // Remove any existing duplicate block for this slot first
+      // Remove any existing duplicate block for these kunds in this slot first
       await sql`
         DELETE FROM kund_blocks
-        WHERE kund_number = ${kundNumber}
+        WHERE kund_number = ANY(${targetNumbers})
           AND event_date = ${eventDate}::date
           AND LOWER(session) = ${session};
       `;
 
-      // Insert fresh block
-      await sql`
-        INSERT INTO kund_blocks (
-          kund_number,
-          event_date,
-          session,
-          reason,
-          blocked_by
-        ) VALUES (
-          ${kundNumber},
-          ${eventDate}::date,
-          ${session},
-          ${reason},
-          ${blockedBy}
-        );
-      `;
+      // Insert fresh blocks
+      for (const kNum of targetNumbers) {
+        await sql`
+          INSERT INTO kund_blocks (
+            kund_number,
+            event_date,
+            session,
+            reason,
+            blocked_by
+          ) VALUES (
+            ${kNum},
+            ${eventDate}::date,
+            ${session},
+            ${reason},
+            ${blockedBy}
+          );
+        `;
+      }
 
       return res.status(200).json({
         success: true,
         action: 'block',
-        kundNumber,
+        kundNumbers: targetNumbers,
+        count: targetNumbers.length,
         date: eventDate,
         session,
         reason,
         blockedBy,
-        message: `Kund ${kundNumber} marked as BLOCKED for ${eventDate} (${session}).`,
+        message: targetNumbers.length === 1
+          ? `Kund ${targetNumbers[0]} marked as BLOCKED for ${eventDate} (${session}).`
+          : `Successfully blocked ${targetNumbers.length} Kund(s) for ${eventDate} (${session}).`,
       });
     } catch (err: any) {
       console.error('Error toggling kund block:', err);

@@ -78,7 +78,7 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
   // Occupancy and blocked data for current date & session
   const [isLoadingOccupancy, setIsLoadingOccupancy] = React.useState<boolean>(false);
   const [occupancyData, setOccupancyData] = React.useState<
-    Record<number, { occupiedSeats: number; isBlocked: boolean; blockedReason?: string }>
+    Record<number, { occupied?: number; occupiedSeats: number; remainingSeats?: number; isBlocked: boolean; blockedReason?: string }>
   >({});
   const [copySuccessMessage, setCopySuccessMessage] = React.useState<string | null>(null);
 
@@ -167,7 +167,7 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
       return;
     }
 
-    const occupied = info?.occupiedSeats || 0;
+    const occupied = typeof info?.occupied === 'number' ? info.occupied : (info?.occupiedSeats || 0);
     if (occupied + familySize > 8) {
       setSearchError(
         lang === 'hi'
@@ -193,7 +193,7 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
   const handleSelectKund = (kNum: number) => {
     const info = occupancyData[kNum];
     if (info?.isBlocked) return;
-    const occupied = info?.occupiedSeats || 0;
+    const occupied = typeof info?.occupied === 'number' ? info.occupied : (info?.occupiedSeats || 0);
     if (occupied + familySize > 8) return;
 
     const match = findSectorByKund(kNum);
@@ -509,22 +509,22 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
               </div>
 
               {/* Status Legend */}
-              <div className="flex items-center gap-3 text-[10px] font-medium flex-wrap">
-                <span className="flex items-center gap-1 text-emerald-800">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-                  <span>Available</span>
+              <div className="flex items-center gap-2.5 text-[10px] font-medium flex-wrap">
+                <span className="flex items-center gap-1 text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" />
+                  <span>Available (0 occ)</span>
                 </span>
-                <span className="flex items-center gap-1 text-amber-800">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
-                  <span>Partial</span>
+                <span className="flex items-center gap-1 text-amber-950 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" />
+                  <span>Partial (1–7 occ)</span>
                 </span>
-                <span className="flex items-center gap-1 text-rose-800">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
-                  <span>Full</span>
+                <span className="flex items-center gap-1 text-rose-950 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-rose-600 inline-block" />
+                  <span>No Vacancy (8 occ)</span>
                 </span>
-                <span className="flex items-center gap-1 text-purple-800">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block" />
-                  <span>Reserved</span>
+                <span className="flex items-center gap-1 text-purple-950 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-purple-600 inline-block" />
+                  <span>Blocked</span>
                 </span>
               </div>
             </div>
@@ -534,10 +534,13 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
                 const isSelected = currentChosenForActiveSession === kNum;
                 const kundInfo = occupancyData[kNum];
                 const isBlocked = Boolean(kundInfo?.isBlocked);
-                const occupied = kundInfo?.occupiedSeats || 0;
-                const isFull = occupied >= 8 || occupied + familySize > 8;
-                const isPartial = occupied > 0 && !isFull;
-                const isAvailable = !isBlocked && !isFull;
+                // Use the "occupied" field from GET /api/admin/occupancy (with fallback to occupiedSeats)
+                const occupied = typeof kundInfo?.occupied === 'number' ? kundInfo.occupied : (kundInfo?.occupiedSeats || 0);
+                const remainingSeats = Math.max(0, 8 - occupied);
+                const cannotFitFamily = !isBlocked && (occupied + familySize > 8);
+                const isFull = !isBlocked && (occupied >= 8 || cannotFitFamily);
+                const isPartial = !isBlocked && occupied >= 1 && occupied <= 7;
+                const isEmpty = !isBlocked && occupied === 0;
 
                 let kundStatus: 'empty' | 'partial' | 'full' | 'blocked' | 'selected' = 'empty';
                 if (isBlocked) {
@@ -550,22 +553,39 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
                   kundStatus = 'partial';
                 }
 
+                let seatClasses = '';
+                if (isBlocked) {
+                  seatClasses = 'bg-purple-50 text-purple-950 border-purple-300 opacity-70 cursor-not-allowed';
+                } else if (isSelected) {
+                  seatClasses = 'bg-stone-900 text-amber-300 border-stone-950 ring-2 ring-amber-400 ring-offset-2 scale-105 shadow-md font-bold cursor-pointer';
+                } else if (isFull) {
+                  seatClasses = 'bg-rose-50 text-rose-950 border-rose-300 opacity-70 cursor-not-allowed';
+                } else if (isPartial) {
+                  seatClasses = 'bg-amber-50 text-amber-950 border-amber-300 hover:bg-amber-100 hover:border-amber-400 cursor-pointer';
+                } else {
+                  // Completely available (0 occupied): light/green
+                  seatClasses = 'bg-emerald-50/70 text-emerald-950 border-emerald-300 hover:bg-emerald-100/80 hover:border-emerald-400 cursor-pointer';
+                }
+
                 return (
                   <button
                     key={kNum}
                     type="button"
                     disabled={isBlocked || isFull}
                     onClick={() => handleSelectKund(kNum)}
-                    className={`min-h-[62px] p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-between ${
+                    className={`min-h-[66px] p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-between ${seatClasses}`}
+                    title={`Kund ${kNum}: ${
                       isBlocked
-                        ? 'bg-purple-50 text-purple-400 border-purple-200 opacity-60 cursor-not-allowed'
+                        ? 'Blocked'
                         : isSelected
-                        ? 'bg-stone-900 text-amber-300 border-stone-950 ring-2 ring-amber-400 ring-offset-2 scale-105 shadow-md font-bold cursor-pointer'
-                        : isFull
-                        ? 'bg-rose-50/80 text-rose-400 border-rose-200 opacity-60 cursor-not-allowed'
+                        ? 'Selected for this session'
+                        : occupied >= 8
+                        ? 'No vacancy (8/8 occupied)'
+                        : cannotFitFamily
+                        ? `Cannot fit family of ${familySize} (${occupied}/8 occupied, ${remainingSeats} left)`
                         : isPartial
-                        ? 'bg-amber-50/70 text-amber-900 border-amber-300 hover:border-amber-400 hover:bg-amber-100/60 cursor-pointer'
-                        : 'bg-white text-stone-800 border-stone-200 hover:border-amber-400 hover:bg-amber-50/50 cursor-pointer'
+                        ? `Partially available (${occupied}/8 occupied, ${remainingSeats} left)`
+                        : 'Completely available (0 occupied, 8 left)'
                     }`}
                   >
                     {/* Traditional Havan Kund line diagram */}
@@ -577,23 +597,27 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
                       {kNum}
                     </span>
 
-                    <div className="mt-0.5">
+                    <div className="mt-0.5 w-full flex justify-center">
                       {isBlocked ? (
-                        <span className="text-[9px] font-semibold text-purple-700 flex items-center gap-0.5">
+                        <span className="text-[9px] font-semibold text-purple-900 flex items-center gap-0.5">
                           <Lock className="w-2.5 h-2.5" />
-                          <span>Reserved</span>
+                          <span>Blocked</span>
                         </span>
                       ) : isSelected ? (
                         <span className="text-[9px] font-bold text-amber-400 flex items-center gap-0.5">
                           <Check className="w-3 h-3 stroke-[3]" />
                           <span>Selected</span>
                         </span>
-                      ) : isFull ? (
-                        <span className="text-[9px] text-rose-700 font-semibold">Full ({occupied}/8)</span>
+                      ) : occupied >= 8 ? (
+                        <span className="text-[9px] text-rose-900 font-bold">No vacancy</span>
+                      ) : cannotFitFamily ? (
+                        <span className="text-[9px] text-rose-900 font-medium">{remainingSeats} left (need {familySize})</span>
                       ) : isPartial ? (
-                        <span className="text-[9px] text-amber-800 font-medium">{8 - occupied} left</span>
+                        <span className="text-[9px] text-amber-950 font-bold bg-amber-200/90 px-1 py-0.2 rounded-sm border border-amber-400">
+                          {remainingSeats} left
+                        </span>
                       ) : (
-                        <span className="text-[9px] text-emerald-700">Available</span>
+                        <span className="text-[9px] text-emerald-900 font-medium">0/8</span>
                       )}
                     </div>
                   </button>

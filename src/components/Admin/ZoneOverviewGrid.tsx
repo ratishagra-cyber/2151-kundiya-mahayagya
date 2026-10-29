@@ -62,6 +62,53 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
     return map;
   }, [zoneSummaries]);
 
+  // Calculate vacancy for any sector based on live kundDetailsMap (Requirement 2 & 3)
+  const getSectorVacancy = React.useCallback((sec: SectorConfig) => {
+    let vacant = 0;
+    let full = 0;
+    let partial = 0;
+    let blocked = 0;
+
+    for (let k = sec.startKund; k <= sec.endKund; k++) {
+      const info = kundDetailsMap[k];
+      const isBlocked = Boolean(info?.isBlocked);
+      const occupied = typeof info?.occupied === 'number' ? info.occupied : (info?.occupiedSeats || 0);
+
+      if (isBlocked) {
+        blocked++;
+      } else if (occupied >= 8) {
+        full++;
+      } else {
+        vacant++;
+        if (occupied > 0) {
+          partial++;
+        }
+      }
+    }
+
+    return {
+      vacantKunds: vacant,
+      fullKunds: full,
+      partialKunds: partial,
+      blockedKunds: blocked,
+      totalKunds: sec.totalKunds,
+      isFull: vacant === 0,
+    };
+  }, [kundDetailsMap]);
+
+  // SMART SECTOR NAVIGATION (Requirement 2):
+  // When opening a zone, if the first sector is fully occupied, automatically show the next sector that has vacant kunds.
+  // If all sectors in a zone are full, return the first sector.
+  const getSmartSectorForZone = React.useCallback((zone: ZoneConfig): SectorConfig => {
+    for (const sec of zone.sectors) {
+      const { isFull } = getSectorVacancy(sec);
+      if (!isFull) {
+        return sec;
+      }
+    }
+    return zone.sectors[0];
+  }, [getSectorVacancy]);
+
   const activeZone: ZoneConfig | undefined = selectedZoneId
     ? ZONES.find((z) => z.id === selectedZoneId)
     : undefined;
@@ -69,6 +116,12 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
   const activeSector: SectorConfig | undefined = activeZone
     ? (activeZone.sectors.find((s) => s.id === selectedSectorId) || activeZone.sectors[0])
     : undefined;
+
+  // Check if all sectors in the active zone are completely full (Requirement 2)
+  const isZoneCompletelyFull = React.useMemo(() => {
+    if (!activeZone) return false;
+    return activeZone.sectors.every((sec) => getSectorVacancy(sec).isFull);
+  }, [activeZone, getSectorVacancy]);
 
   // Handle direct jump to kund number 1-2151
   const handleJumpToKund = (e: React.FormEvent) => {
@@ -154,8 +207,9 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
               <div
                 key={zone.id}
                 onClick={() => {
+                  const smartSector = getSmartSectorForZone(zone);
                   setSelectedZoneId(zone.id);
-                  setSelectedSectorId(zone.sectors[0].id);
+                  setSelectedSectorId(smartSector.id);
                 }}
                 className="group p-5 bg-white rounded-3xl border border-stone-200 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4"
               >
@@ -263,7 +317,7 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
               </span>
             </div>
 
-            {/* Quick Zone Switcher Dropdown */}
+            {/* Quick Zone Switcher Dropdown (Smart Sector aware) */}
             <div className="flex items-center gap-2">
               <label className="text-xs text-stone-500 font-medium">
                 {lang === 'hi' ? 'जोन बदलें:' : 'Switch Zone:'}
@@ -274,8 +328,9 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
                   const zId = Number(e.target.value);
                   const z = ZONES.find((item) => item.id === zId);
                   if (z) {
+                    const smartSector = getSmartSectorForZone(z);
                     setSelectedZoneId(z.id);
-                    setSelectedSectorId(z.sectors[0].id);
+                    setSelectedSectorId(smartSector.id);
                   }
                 }}
                 className="min-h-[44px] px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-xs font-medium text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
@@ -289,26 +344,64 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
             </div>
           </div>
 
-          {/* Sector Tabs (4 Sectors: A, B, C, D) */}
+          {/* ZONE IS FULL INDICATOR BANNER (Requirement 2) */}
+          {isZoneCompletelyFull && (
+            <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-3xl flex items-center gap-3 text-rose-950 shadow-xs animate-in fade-in duration-200">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 border border-rose-300 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5 text-rose-700" />
+              </div>
+              <div className="flex-1">
+                <div className="font-bold text-sm text-rose-900 font-serif flex items-center gap-2">
+                  <span>{lang === 'hi' ? 'यह जोन पूर्णतः भर चुका है' : 'This Zone is Completely Full'}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-rose-200 text-rose-950 text-[10px] font-mono font-extrabold uppercase">
+                    100% Full
+                  </span>
+                </div>
+                <div className="text-xs text-rose-700 mt-0.5">
+                  {lang === 'hi'
+                    ? 'इस जोन के सभी 4 सेक्टरों (A, B, C, D) में कोई रिक्त स्थान उपलब्ध नहीं है (सभी 8 सीटें भरी या ब्लॉक हैं)। ऑपरेटर मैन्युअल रूप से किसी भी सेक्टर का निरीक्षण व प्रबंधन कर सकते हैं।'
+                    : 'All sectors in this zone are currently at 100% capacity (all 8 seats occupied or blocked). Operators can still manually inspect or manage individual kunds below.'}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Sector Tabs with Smart Live Vacancy Badges (4 Sectors: A, B, C, D) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
             {activeZone.sectors.map((sec) => {
               const isSelected = sec.id === activeSector?.id;
+              const { vacantKunds, isFull } = getSectorVacancy(sec);
+
               return (
                 <button
                   key={sec.id}
                   type="button"
                   onClick={() => setSelectedSectorId(sec.id)}
-                  className={`min-h-[44px] px-4 py-2 rounded-2xl text-xs font-bold transition-all border cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+                  className={`min-h-[44px] px-3.5 py-2 rounded-2xl text-xs font-bold transition-all border cursor-pointer whitespace-nowrap flex items-center gap-2 ${
                     isSelected
                       ? 'bg-stone-900 text-amber-300 border-stone-950 shadow-xs'
                       : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
                   }`}
                 >
                   <span>{lang === 'hi' ? sec.nameHi : sec.name}</span>
-                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
                     isSelected ? 'bg-stone-800 text-amber-200' : 'bg-stone-100 text-stone-600'
                   }`}>
                     {sec.startKund}–{sec.endKund}
+                  </span>
+                  {/* Live Vacancy Pill */}
+                  <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
+                    isFull
+                      ? isSelected
+                        ? 'bg-rose-950 text-rose-200 border border-rose-800'
+                        : 'bg-rose-100 text-rose-900 border border-rose-200'
+                      : isSelected
+                      ? 'bg-emerald-950 text-emerald-200 border border-emerald-800'
+                      : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                  }`}>
+                    {isFull 
+                      ? (lang === 'hi' ? 'पूर्ण' : 'Full') 
+                      : `${vacantKunds} ${lang === 'hi' ? 'रिक्त' : 'vacant'}`}
                   </span>
                 </button>
               );

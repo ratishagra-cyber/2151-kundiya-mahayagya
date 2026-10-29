@@ -357,9 +357,11 @@ export const KundOccupancyMonitor: React.FC<KundOccupancyMonitorProps> = ({
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-1.5 max-h-[580px] overflow-y-auto p-1 no-scrollbar">
             {filteredKunds.map((k) => {
               const isBlocked = k.isBlocked;
-              const isFull = !isBlocked && k.occupiedSeats === 8;
-              const isPartial = !isBlocked && k.occupiedSeats > 0 && k.occupiedSeats < 8;
-              const isEmpty = !isBlocked && k.occupiedSeats === 0;
+              const occupied = k.occupiedSeats || 0;
+              const remainingSeats = Math.max(0, 8 - occupied);
+              const isFull = !isBlocked && occupied >= 8;
+              const isPartial = !isBlocked && occupied >= 1 && occupied <= 7;
+              const isEmpty = !isBlocked && occupied === 0;
               const isSelected = selectedKunds.includes(k.kundNumber);
 
               return (
@@ -378,35 +380,35 @@ export const KundOccupancyMonitor: React.FC<KundOccupancyMonitorProps> = ({
                       : ''
                   } ${
                     isBlocked
-                      ? 'bg-purple-100 border-2 border-purple-500 text-purple-950 hover:bg-purple-200'
+                      ? 'bg-purple-50 border border-purple-300 text-purple-950 hover:bg-purple-100'
                       : isFull
-                      ? 'bg-rose-900 border-2 border-rose-950 text-white shadow-2xs hover:bg-rose-950'
+                      ? 'bg-rose-50 border border-rose-300 text-rose-950 hover:bg-rose-100'
                       : isPartial
-                      ? 'bg-amber-100 border-2 border-dashed border-amber-500 text-amber-950 hover:bg-amber-200'
-                      : 'bg-stone-50 border border-stone-300 text-stone-600 hover:border-stone-400 hover:bg-stone-100'
+                      ? 'bg-amber-50 border border-amber-300 text-amber-950 hover:bg-amber-100'
+                      : 'bg-emerald-50/70 border border-emerald-300 text-emerald-950 hover:bg-emerald-100/80'
                   }`}
-                  title={`Kund #${k.kundNumber} (${k.zone}): ${isBlocked ? 'Blocked (Offline)' : `${k.occupiedSeats}/8 seats`}`}
+                  title={`Kund ${k.kundNumber} (${k.zone}): ${isBlocked ? 'Blocked' : isFull ? 'No vacancy (8/8 occupied)' : isPartial ? `Partially available (${occupied}/8, ${remainingSeats} left)` : 'Completely available (0 occupied, 8 left)'}`}
                 >
                   <div className="flex items-center gap-0.5 text-[11px] font-bold font-mono leading-tight">
                     {isBlocked && <Lock className="w-2.5 h-2.5 text-purple-700" />}
-                    {isFull && <Check className="w-2.5 h-2.5 text-amber-300 stroke-[3]" />}
-                    {isPartial && <span className="text-[9px] text-amber-800">◐</span>}
-                    {isEmpty && <span className="text-[9px] text-stone-400">○</span>}
+                    {isFull && <Check className="w-2.5 h-2.5 text-rose-700 stroke-[3]" />}
+                    {isPartial && <span className="text-[9px] text-amber-800 font-bold">◐</span>}
+                    {isEmpty && <span className="text-[9px] text-emerald-700">○</span>}
                     <span>{k.kundNumber}</span>
                   </div>
 
                   <div
-                    className={`text-[10px] font-mono leading-tight mt-0.5 ${
+                    className={`text-[9px] font-mono leading-tight mt-0.5 font-bold ${
                       isBlocked
-                        ? 'text-purple-800 font-bold'
+                        ? 'text-purple-800'
                         : isFull
-                        ? 'text-amber-200 font-bold'
+                        ? 'text-rose-900'
                         : isPartial
-                        ? 'text-amber-900 font-bold'
-                        : 'text-stone-400'
+                        ? 'text-amber-950'
+                        : 'text-emerald-800'
                     }`}
                   >
-                    {isBlocked ? 'BLOCKED' : `${k.occupiedSeats}/8`}
+                    {isBlocked ? 'BLOCKED' : isFull ? 'Full' : isPartial ? `${remainingSeats} left` : '0/8'}
                   </div>
                 </button>
               );
