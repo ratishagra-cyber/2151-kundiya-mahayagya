@@ -53,6 +53,27 @@ async function findBestKund(
   return null;
 }
 
+async function isKundAvailable(
+  kundNumber: number,
+  eventDate: string,
+  session: string,
+  familySize: number
+): Promise<boolean> {
+  const [blocked] = await sql`
+    select id from kund_blocks
+    where kund_number = ${kundNumber} and event_date = ${eventDate} and session = ${session}
+  `;
+  if (blocked) return false;
+
+  const [occ] = await sql`
+    select coalesce(sum(participant_count), 0)::int as occupied
+    from allocations
+    where event_date = ${eventDate} and session = ${session} and kund_number = ${kundNumber}
+  `;
+  const occupied = occ?.occupied || 0;
+  return occupied + familySize <= MAX_PER_KUND;
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -73,6 +94,7 @@ export default async function handler(req: any, res: any) {
 
     const participants = body.participants || [];
     const familySchedule = body.familySchedule || [];
+    const requestedAllocations = body.allocations || [];
 
     if (!yagyakarta_name || !primary_mobile || !city || !address) {
       return res.status(400).json({
@@ -110,6 +132,15 @@ export default async function handler(req: any, res: any) {
     }
 
     const allocated: any[] = [];
+
+    // Build a map of requested kunds by date+session
+    const requestedMap = new Map<string, number>();
+    for (const a of requestedAllocations) {
+      if (a.date && a.session && a.kundNumber) {
+        requestedMap.set(`${a.date}|${a.session}`, Number(a.kundNumber));
+      }
+    }
+
     for (const s of familySchedule) {
       if (!s.morning && !s.afternoon) continue;
 
@@ -118,11 +149,27 @@ export default async function handler(req: any, res: any) {
       if (s.afternoon) sessionsToAllocate.push('afternoon');
 
       for (const session of sessionsToAllocate) {
-        const kund = await findBestKund(s.date, session, familySize);
-        if (kund === null) {
-          return res.status(409).json({
-            error: `No kund available for ${s.date} ${session}`,
-          });
+        const key = `${s.date}|${session}`;
+        const requestedKund = requestedMap.get(key);
+
+        let kund: number | null = null;
+
+        if (requestedKund) {
+          const available = await isKundAvailable(requestedKund, s.date, session, familySize);
+          if (available) {
+            kund = requestedKund;
+          } else {
+            return res.status(409).json({
+              error: `Kund ${requestedKund} is not available for ${s.date} ${session}`,
+            });
+          }
+        } else {
+          kund = await findBestKund(s.date, session, familySize);
+          if (kund === null) {
+            return res.status(409).json({
+              error: `No kund available for ${s.date} ${session}`,
+            });
+          }
         }
 
         await sql`
