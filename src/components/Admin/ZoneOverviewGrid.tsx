@@ -35,6 +35,9 @@ interface ZoneOverviewGridProps {
   zoneSummaries?: ZoneSummaryItem[];
   kundDetailsMap: Record<number, KundDetailInfo>;
   onSelectBooking?: (bookingCode: string) => void;
+  date?: string;
+  session?: string;
+  onBlockToggled?: () => void;
   lang?: 'en' | 'hi';
 }
 
@@ -42,6 +45,9 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
   zoneSummaries = [],
   kundDetailsMap,
   onSelectBooking,
+  date,
+  session,
+  onBlockToggled,
   lang = 'hi',
 }) => {
   const [selectedZoneId, setSelectedZoneId] = React.useState<number | null>(null);
@@ -160,7 +166,7 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
                       {zone.shortName}
                     </span>
                     <span className="font-mono text-stone-500 font-semibold text-[11px]">
-                      #{zone.startKund} – #{zone.endKund}
+                      Kund {zone.startKund} – {zone.endKund}
                     </span>
                   </div>
                   <h3 className="font-serif font-bold text-base text-stone-900 group-hover:text-amber-800 transition-colors mt-1.5 leading-snug">
@@ -252,8 +258,8 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
               <div className="font-serif font-bold text-stone-900 text-sm sm:text-base">
                 {lang === 'hi' ? activeZone.nameHi : activeZone.name}
               </div>
-              <span className="text-xs font-mono text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md">
-                Kund #{activeZone.startKund} – #{activeZone.endKund}
+              <span className="text-xs font-mono text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-md">
+                Kund {activeZone.startKund} – {activeZone.endKund}
               </span>
             </div>
 
@@ -302,7 +308,7 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
                   <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
                     isSelected ? 'bg-stone-800 text-amber-200' : 'bg-stone-100 text-stone-600'
                   }`}>
-                    #{sec.startKund}–#{sec.endKund}
+                    {sec.startKund}–{sec.endKund}
                   </span>
                 </button>
               );
@@ -316,6 +322,9 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
               sector={activeSector}
               kundDetailsMap={kundDetailsMap}
               onSelectBooking={onSelectBooking}
+              date={date}
+              session={session}
+              onBlockToggled={onBlockToggled}
               lang={lang}
             />
           )}

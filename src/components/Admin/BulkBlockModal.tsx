@@ -207,7 +207,7 @@ export const BulkBlockModal: React.FC<BulkBlockModalProps> = ({
               >
                 {KUND_ZONES.map((z) => (
                   <option key={z.id} value={z.id}>
-                    {z.id}: {z.name} (#{z.range[0]} – #{z.range[1]})
+                    {z.id}: {z.name} ({z.range[0]} – {z.range[1]})
                   </option>
                 ))}
               </select>

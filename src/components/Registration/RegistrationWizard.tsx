@@ -123,8 +123,9 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
       let finalAllocations: AllocatedSession[] = [];
 
       // REQUIREMENT 5: TWO ALLOCATION MODES
-      if (allocationMode === 'manual') {
-        if (!manualKundNumber) {
+      if (allocationMode === 'manual' || (manualKundNumber !== null && manualKundNumber > 0)) {
+        const chosenKund = manualKundNumber ? Number(manualKundNumber) : null;
+        if (!chosenKund || isNaN(chosenKund)) {
           setAllocationError(
             lang === 'hi'
               ? 'कृपया मानचित्र से अपनी पसंद का कुण्ड चुनें अथवा ऑटोमैटिक आवंटन विकल्प चुनें।'
@@ -139,7 +140,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
         finalAllocations = allocationRequests.map((req) => ({
           date: req.date,
           session: req.session,
-          kundNumber: manualKundNumber,
+          kundNumber: chosenKund,
           zone: manualZoneName || 'Zone',
           participantIds: familyMemberIds,
           participantCount: familyMemberIds.length,
@@ -191,11 +192,20 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
         return;
       }
 
-      // 6. Use confirmed booking code & server returned data
+      // 6. Use confirmed booking code & ensure selected allocations are preserved
+      const confirmedAllocations = 
+        (saveResult.data?.allocations && saveResult.data.allocations.length > 0)
+          ? saveResult.data.allocations.map((a: any) => ({
+              ...a,
+              kundNumber: Number(a.kundNumber),
+            }))
+          : finalAllocations;
+
       const confirmedBookingData: Booking = {
         ...newBooking,
         ...(saveResult.data || {}),
         id: saveResult.bookingCode || saveResult.data?.id || newBookingId,
+        allocations: confirmedAllocations,
         yagyakarta: {
           ...newBooking.yagyakarta,
           ...(saveResult.data?.yagyakarta || {}),
@@ -337,6 +347,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
         onSelectKund={(kNum, zName) => {
           setManualKundNumber(kNum);
           setManualZoneName(zName);
+          setAllocationMode('manual');
         }}
         currentSelectedKund={manualKundNumber}
         familySize={participants.length}

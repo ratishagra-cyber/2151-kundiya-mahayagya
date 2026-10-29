@@ -10,9 +10,11 @@ import {
   Sparkles, 
   ChevronRight,
   ArrowLeft,
-  CheckCircle2
+  CheckCircle2,
+  Lock
 } from 'lucide-react';
 import { ZONES, ZoneConfig, SectorConfig, findSectorByKund } from '../../data/zoneConfig';
+import { HavanKundIcon } from '../Common/HavanKundIcon';
 
 interface ManualKundPickerModalProps {
   isOpen: boolean;
@@ -36,6 +38,24 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
   const [tempChosenKund, setTempChosenKund] = React.useState<number | null>(currentSelectedKund);
   const [searchKundText, setSearchKundText] = React.useState<string>('');
   const [searchError, setSearchError] = React.useState<string | null>(null);
+  const [blockedKunds, setBlockedKunds] = React.useState<Set<number>>(new Set());
+
+  // Fetch current blocked kunds on open so users cannot select blocked kunds
+  React.useEffect(() => {
+    if (isOpen) {
+      fetch('/api/admin/block-kund')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && Array.isArray(data.blockedKunds)) {
+            const set = new Set<number>(data.blockedKunds.map((b: any) => Number(b.kundNumber)));
+            setBlockedKunds(set);
+          }
+        })
+        .catch(() => {
+          // non-fatal
+        });
+    }
+  }, [isOpen]);
 
   // Sync tempChosenKund when modal opens or currentSelectedKund changes
   React.useEffect(() => {
@@ -64,6 +84,10 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
       setSearchError(lang === 'hi' ? 'कृपया 1 से 2151 के बीच कुण्ड संख्या डालें' : 'Enter a number between 1 and 2151');
       return;
     }
+    if (blockedKunds.has(num)) {
+      setSearchError(lang === 'hi' ? `कुण्ड ${num} वर्तमान में आरक्षित/ब्लॉक है। कृपया दूसरा कुण्ड चुनें।` : `Kund ${num} is currently blocked. Please pick another.`);
+      return;
+    }
     const match = findSectorByKund(num);
     if (match) {
       setSelectedZoneId(match.zone.id);
@@ -75,8 +99,12 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
 
   const handleConfirmSelection = () => {
     if (tempChosenKund) {
+      if (blockedKunds.has(tempChosenKund)) {
+        setSearchError(lang === 'hi' ? 'यह कुण्ड ब्लॉक है, कृपया दूसरा चुनें।' : 'This Kund is blocked, please pick another.');
+        return;
+      }
       const match = findSectorByKund(tempChosenKund);
-      const zoneName = match ? (lang === 'hi' ? match.zone.nameHi : match.zone.name) : `Zone ${selectedZoneId}`;
+      const zoneName = match ? `${match.zone.shortName} · ${match.sector.name}` : `Zone ${selectedZoneId}`;
       onSelectKund(tempChosenKund, zoneName);
       onClose();
     }
@@ -99,7 +127,7 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
         <div className="px-5 sm:px-6 py-4 bg-gradient-to-r from-stone-900 via-stone-800 to-rose-950 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 flex items-center justify-center">
-              <Flame className="w-5 h-5 fill-amber-400" />
+              <HavanKundIcon status="selected" size={26} />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -148,12 +176,12 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
                 setSearchKundText(e.target.value);
                 setSearchError(null);
               }}
-              placeholder={lang === 'hi' ? 'कुण्ड सं. (उदा. 108)' : 'Kund # (e.g. 108)'}
-              className="min-h-[38px] w-36 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-mono placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+              placeholder={lang === 'hi' ? 'कुण्ड संख्या (उदा. 108)' : 'Kund number (e.g. 108)'}
+              className="min-h-[38px] w-40 px-3 rounded-xl border border-stone-300 bg-white text-xs font-mono placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
             />
             <button
               type="submit"
-              className="min-h-[38px] px-3 rounded-xl bg-stone-900 text-amber-300 text-xs font-semibold hover:bg-stone-800 transition-colors cursor-pointer"
+              className="min-h-[38px] px-3.5 rounded-xl bg-stone-900 text-amber-300 text-xs font-semibold hover:bg-stone-800 transition-colors cursor-pointer"
             >
               {lang === 'hi' ? 'खोजें' : 'Go'}
             </button>
@@ -169,7 +197,7 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
         {/* Modal Body: Zones Ribbon, Sector Tabs, & Kund Seat Grid */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           
-          {/* Zone Selector Horizontal Carousel / Ribbon */}
+          {/* Zone Selector Horizontal Ribbon */}
           <div>
             <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block mb-2">
               {lang === 'hi' ? '1. मण्डलीय जोन चुनें:' : '1. Select Sacred Zone:'}
@@ -226,7 +254,7 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
                   >
                     <span>{lang === 'hi' ? sec.nameHi : sec.name}</span>
                     <span className="ml-1.5 font-mono text-[10px] opacity-80">
-                      (#{sec.startKund}–#{sec.endKund})
+                      ({sec.startKund}–{sec.endKund})
                     </span>
                   </button>
                 );
@@ -234,7 +262,7 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
             </div>
           </div>
 
-          {/* Bus Seat Kund Grid for Selected Sector */}
+          {/* Bus Seat Kund Grid with Traditional Havan Kund Line Diagram */}
           <div className="bg-stone-50 p-3 sm:p-4 rounded-2xl border border-stone-200">
             <div className="flex items-center justify-between text-xs text-stone-600 mb-3 pb-2 border-b border-stone-200">
               <span className="font-semibold">
@@ -242,35 +270,61 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
               </span>
               {tempChosenKund && (
                 <span className="font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300">
-                  {lang === 'hi' ? 'वर्तमान चयन: कुण्ड #' : 'Selected: Kund #'}{tempChosenKund}
+                  {lang === 'hi' ? 'वर्तमान चयन: कुण्ड ' : 'Selected: Kund '}{tempChosenKund}
                 </span>
               )}
             </div>
 
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2.5">
               {kundsInSector.map((kNum) => {
                 const isSelected = tempChosenKund === kNum;
+                const isBlocked = blockedKunds.has(kNum);
 
                 return (
                   <button
                     key={kNum}
                     type="button"
-                    onClick={() => setTempChosenKund(kNum)}
-                    className={`min-h-[48px] p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
-                      isSelected
-                        ? 'bg-stone-900 text-amber-300 border-stone-950 ring-2 ring-amber-400 ring-offset-2 scale-105 shadow-md font-bold'
-                        : 'bg-white text-stone-800 border-stone-200 hover:border-amber-400 hover:bg-amber-50/50'
+                    disabled={isBlocked}
+                    onClick={() => {
+                      if (!isBlocked) {
+                        setTempChosenKund(kNum);
+                      }
+                    }}
+                    className={`min-h-[58px] p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-between ${
+                      isBlocked
+                        ? 'bg-purple-50 text-purple-400 border-purple-200 opacity-60 cursor-not-allowed'
+                        : isSelected
+                        ? 'bg-stone-900 text-amber-300 border-stone-950 ring-2 ring-amber-400 ring-offset-2 scale-105 shadow-md font-bold cursor-pointer'
+                        : 'bg-white text-stone-800 border-stone-200 hover:border-amber-400 hover:bg-amber-50/50 cursor-pointer'
                     }`}
                   >
-                    <span className="text-[9px] uppercase tracking-wider text-stone-400 leading-none">
-                      KUND
+                    {/* Traditional Havan Kund line diagram */}
+                    <div className="mb-0.5">
+                      <HavanKundIcon
+                        status={isBlocked ? 'blocked' : isSelected ? 'selected' : 'empty'}
+                        size={22}
+                      />
+                    </div>
+
+                    <span className="font-mono text-xs sm:text-sm font-extrabold tabular-nums leading-tight">
+                      {kNum}
                     </span>
-                    <span className="font-mono text-xs sm:text-sm font-extrabold tabular-nums mt-0.5">
-                      #{kNum}
-                    </span>
-                    {isSelected && (
-                      <Check className="w-3 h-3 text-amber-400 mt-0.5 stroke-[3]" />
-                    )}
+
+                    <div className="mt-0.5">
+                      {isBlocked ? (
+                        <span className="text-[9px] font-semibold text-purple-700 flex items-center gap-0.5">
+                          <Lock className="w-2.5 h-2.5" />
+                          <span>Reserved</span>
+                        </span>
+                      ) : isSelected ? (
+                        <span className="text-[9px] font-bold text-amber-400 flex items-center gap-0.5">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                          <span>Selected</span>
+                        </span>
+                      ) : (
+                        <span className="text-[9px] text-stone-400">Available</span>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -286,7 +340,7 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
               <span className="flex items-center gap-1.5 text-stone-900 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>
-                  {lang === 'hi' ? 'कुण्ड #' : 'Kund #'}{tempChosenKund} ({lang === 'hi' ? currentZone.nameHi : currentZone.name})
+                  {lang === 'hi' ? 'कुण्ड ' : 'Kund '}{tempChosenKund} ({lang === 'hi' ? currentZone.nameHi : currentZone.name})
                 </span>
               </span>
             ) : (
@@ -305,7 +359,7 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
             <button
               type="button"
               onClick={handleConfirmSelection}
-              disabled={!tempChosenKund}
+              disabled={!tempChosenKund || blockedKunds.has(tempChosenKund)}
               className="min-h-[44px] flex-1 sm:flex-initial px-6 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs shadow-xs transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
             >
               <Check className="w-4 h-4 stroke-[3]" />

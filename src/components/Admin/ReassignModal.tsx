@@ -76,7 +76,7 @@ export const ReassignModal: React.FC<ReassignModalProps> = ({
               {alloc.date} · {alloc.session === 'morning' ? 'Morning 8-11 AM' : 'Afternoon 1-4 PM'}
             </div>
             <div className="text-rose-900 font-bold">
-              Current: Kund #{alloc.kundNumber} ({alloc.zone}) · {alloc.participantCount} Devotees
+              Current: Kund {alloc.kundNumber} ({alloc.zone}) · {alloc.participantCount} Devotees
             </div>
           </div>
 

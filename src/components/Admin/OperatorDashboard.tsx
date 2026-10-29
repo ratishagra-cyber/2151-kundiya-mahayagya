@@ -18,13 +18,15 @@ import {
   Lock, 
   Sparkles,
   LayoutGrid,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Camera
 } from 'lucide-react';
 import { EVENT_DAYS } from '../../data/eventConfig';
 import { SessionType, AdminUser } from '../../types';
 import { BookingDetailModal } from './BookingDetailModal';
 import { ZoneOverviewGrid, ZoneSummaryItem } from './ZoneOverviewGrid';
 import { KundDetailInfo } from './KundSeatGrid';
+import { AttendanceScanner } from './AttendanceScanner';
 
 interface OperatorDashboardProps {
   currentAdmin: AdminUser;
@@ -73,8 +75,8 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
   const [occupancy, setOccupancy] = React.useState<OccupancySummaryData | null>(null);
   const [loadingOccupancy, setLoadingOccupancy] = React.useState<boolean>(false);
 
-  // Active view tab: 'zones' (Zone Overview + Bus Seat Kund Grid) vs 'bookings' (Bookings list)
-  const [activeTab, setActiveTab] = React.useState<'zones' | 'bookings'>('zones');
+  // Active view tab: 'zones' | 'bookings' | 'attendance'
+  const [activeTab, setActiveTab] = React.useState<'zones' | 'bookings' | 'attendance'>('zones');
 
   // Bookings list state
   const [bookings, setBookings] = React.useState<AdminBookingRow[]>([]);
@@ -335,9 +337,9 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
 
       </section>
 
-      {/* DASHBOARD VIEW SWITCHER TABS: [ 🗺️ 11 Zones & Kund Grid ] vs [ 📋 All Devotee Bookings ] */}
+      {/* DASHBOARD VIEW SWITCHER TABS: [ 🗺️ 11 Zones & Kund Grid ] vs [ 📋 All Devotee Bookings ] vs [ 📷 Gate Attendance Scanner ] */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 p-1 bg-stone-200/80 rounded-2xl">
+        <div className="flex items-center gap-1.5 p-1 bg-stone-200/80 rounded-2xl flex-wrap">
           <button
             onClick={() => setActiveTab('zones')}
             className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
@@ -347,7 +349,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
             }`}
           >
             <LayoutGrid className="w-4 h-4" />
-            <span>{lang === 'hi' ? '11 जोन एवं बस-सीट कुण्ड ग्रिड' : '11 Zones & Bus-Seat Kund Map'}</span>
+            <span>{lang === 'hi' ? '11 जोन एवं कुण्ड ग्रिड' : '11 Zones & Kund Map'}</span>
           </button>
 
           <button
@@ -359,10 +361,22 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
             }`}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>{lang === 'hi' ? 'श्रद्धालु बुकिंग सूची' : 'Devotee Bookings List'}</span>
+            <span>{lang === 'hi' ? 'श्रद्धालु बुकिंग सूची' : 'Devotee Bookings'}</span>
             <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-md bg-stone-700 text-white">
               {bookings.length}
             </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('attendance')}
+            className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'attendance'
+                ? 'bg-rose-900 text-amber-200 shadow-sm'
+                : 'text-stone-700 hover:text-stone-950'
+            }`}
+          >
+            <Camera className="w-4 h-4" />
+            <span>{lang === 'hi' ? 'गेट अटेंडेंस स्कैनर' : 'Attendance Scanner'}</span>
           </button>
         </div>
 
@@ -378,6 +392,9 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
             zoneSummaries={occupancy?.zoneSummaries}
             kundDetailsMap={occupancy?.kundDetails || {}}
             onSelectBooking={(code) => setSelectedBookingId(code)}
+            date={selectedDate}
+            session={selectedSession}
+            onBlockToggled={fetchOccupancy}
             lang={lang}
           />
         </section>
@@ -639,6 +656,18 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
             </span>
           </div>
 
+        </section>
+      )}
+
+      {/* VIEW TAB 3: GATE ATTENDANCE SCANNER */}
+      {activeTab === 'attendance' && (
+        <section className="space-y-4">
+          <AttendanceScanner
+            currentDate={selectedDate}
+            currentSession={selectedSession}
+            operatorName={currentAdmin.name}
+            lang={lang}
+          />
         </section>
       )}
 

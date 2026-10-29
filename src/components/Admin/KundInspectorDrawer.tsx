@@ -54,7 +54,7 @@ export const KundInspectorDrawer: React.FC<KundInspectorDrawerProps> = ({
                 {kundData.isBlocked ? 'Blocked Kund Details' : 'Physical Kund Inspector'}
               </div>
               <h3 className="text-lg font-bold font-serif text-white">
-                Kund #{kundData.kundNumber} · {kundData.zone}
+                Kund {kundData.kundNumber} · {kundData.zone}
               </h3>
             </div>
           </div>
@@ -184,7 +184,7 @@ export const KundInspectorDrawer: React.FC<KundInspectorDrawerProps> = ({
                         className="px-4 py-2 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-950 font-bold border border-purple-300 text-xs flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
                       >
                         <Lock className="w-3.5 h-3.5" />
-                        <span>Block Kund #{kundData.kundNumber} for Offline/VIP</span>
+                        <span>Block Kund {kundData.kundNumber} for Offline/VIP</span>
                       </button>
                     )}
                   </div>

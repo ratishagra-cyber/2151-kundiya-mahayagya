@@ -26,15 +26,43 @@ export const BookingRetrieval: React.FC<BookingRetrievalProps> = ({
     { label: 'Dr. Anand Kumar Gupta', query: 'MY-2026-2184', id: 'MY-2026-2184' },
   ];
 
-  const handleSearch = (e?: React.FormEvent, customQuery?: string) => {
+  const handleSearch = async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
     const q = customQuery !== undefined ? customQuery : searchQuery;
     if (!q.trim()) return;
 
     setFeedbackMsg(null);
     setHasSearched(true);
-    const result = findBooking(q);
-    setActiveBooking(result);
+    const localResult = findBooking(q);
+    if (localResult) {
+      setActiveBooking(localResult);
+      return;
+    }
+
+    // Fallback: Query Neon backend
+    try {
+      const res = await fetch(`/api/admin/booking-detail?bookingId=${encodeURIComponent(q.trim())}`);
+      const data = await res.json();
+      if (data && data.success && data.booking) {
+        const b = data.booking;
+        const formattedBooking: Booking = {
+          id: b.bookingCode || b.id,
+          createdAt: b.createdAt || new Date().toISOString(),
+          yagyakarta: b.yagyakarta,
+          participants: b.participants,
+          allocations: (b.allocations || []).map((a: any) => ({
+            ...a,
+            kundNumber: Number(a.kundNumber),
+          })),
+          status: b.status || 'confirmed',
+        };
+        setActiveBooking(formattedBooking);
+      } else {
+        setActiveBooking(null);
+      }
+    } catch {
+      setActiveBooking(null);
+    }
   };
 
   const handleCancelSession = (date: string, session: SessionType) => {
@@ -187,7 +215,7 @@ export const BookingRetrieval: React.FC<BookingRetrievalProps> = ({
                       ({alloc.session === 'morning' ? 'Morning 8-11 AM' : 'Afternoon 1-4 PM'})
                     </span>
                     <span className="ml-2 font-mono font-semibold text-rose-900">
-                      Kund #{alloc.kundNumber} ({alloc.zone})
+                      {lang === 'hi' ? 'कुण्ड ' : 'Kund '}{alloc.kundNumber} {alloc.zone ? `(${alloc.zone})` : ''}
                     </span>
                   </div>
 

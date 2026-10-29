@@ -332,7 +332,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                         <div className="flex items-center gap-1.5">
                           <Flame className="w-3.5 h-3.5 text-rose-600" />
                           <span className="font-extrabold text-stone-900 text-sm font-mono">
-                            कुण्ड #{alloc.kundNumber}
+                            {lang === 'hi' ? 'कुण्ड ' : 'Kund '}{alloc.kundNumber}
                           </span>
                         </div>
                         <span className="text-[11px] text-stone-600">

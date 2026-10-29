@@ -274,7 +274,7 @@ export const KundOccupancyMonitor: React.FC<KundOccupancyMonitorProps> = ({
               <option value="all">All Zones (A–G)</option>
               {KUND_ZONES.map((z) => (
                 <option key={z.id} value={z.id}>
-                  {z.id}: {z.name} (#{z.range[0]}–#{z.range[1]})
+                  {z.id}: {z.name} ({z.range[0]}–{z.range[1]})
                 </option>
               ))}
             </select>
@@ -284,7 +284,7 @@ export const KundOccupancyMonitor: React.FC<KundOccupancyMonitorProps> = ({
                 type="text"
                 value={searchKundNum}
                 onChange={(e) => setSearchKundNum(e.target.value)}
-                placeholder="Jump to Kund #..."
+                placeholder="Jump to Kund..."
                 className="w-full min-h-[36px] pl-3 pr-2 py-1.5 rounded-xl border border-stone-300 text-xs font-mono focus:outline-none"
               />
             </div>
@@ -306,7 +306,7 @@ export const KundOccupancyMonitor: React.FC<KundOccupancyMonitorProps> = ({
             </span>
             <span className="font-bold">Kund(s) Selected</span>
             <span className="text-stone-400 text-[11px] hidden sm:inline">
-              [#{selectedKunds.slice(0, 5).join(', #')}{selectedKunds.length > 5 ? '...' : ''}]
+              [{selectedKunds.slice(0, 5).join(', ')}{selectedKunds.length > 5 ? '...' : ''}]
             </span>
           </div>
 
@@ -392,7 +392,7 @@ export const KundOccupancyMonitor: React.FC<KundOccupancyMonitorProps> = ({
                     {isFull && <Check className="w-2.5 h-2.5 text-amber-300 stroke-[3]" />}
                     {isPartial && <span className="text-[9px] text-amber-800">◐</span>}
                     {isEmpty && <span className="text-[9px] text-stone-400">○</span>}
-                    <span>#{k.kundNumber}</span>
+                    <span>{k.kundNumber}</span>
                   </div>
 
                   <div

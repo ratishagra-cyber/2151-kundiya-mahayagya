@@ -5,6 +5,8 @@ import registerHandler from './api/register';
 import adminBookingsHandler from './api/admin/bookings';
 import adminBookingDetailHandler from './api/admin/booking-detail';
 import adminOccupancyHandler from './api/admin/occupancy';
+import adminBlockKundHandler from './api/admin/block-kund';
+import adminAttendanceHandler from './api/admin/attendance';
 
 dotenv.config();
 
@@ -47,6 +49,24 @@ async function startServer() {
       await adminOccupancyHandler(req, res);
     } catch (err: any) {
       console.error('API admin occupancy error in server:', err);
+      res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+    }
+  });
+
+  app.all('/api/admin/block-kund', async (req, res) => {
+    try {
+      await adminBlockKundHandler(req, res);
+    } catch (err: any) {
+      console.error('API admin block-kund error in server:', err);
+      res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+    }
+  });
+
+  app.all('/api/admin/attendance', async (req, res) => {
+    try {
+      await adminAttendanceHandler(req, res);
+    } catch (err: any) {
+      console.error('API admin attendance error in server:', err);
       res.status(500).json({ success: false, error: err.message || 'Internal server error' });
     }
   });

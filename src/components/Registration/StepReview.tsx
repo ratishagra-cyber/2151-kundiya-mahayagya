@@ -337,7 +337,7 @@ export const StepReview: React.FC<StepReviewProps> = ({
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>
                       {lang === 'hi' ? 'चयनित पवित्र कुण्ड: ' : 'Chosen Sacred Kund: '}
-                      <strong className="font-mono text-sm text-stone-900">#{manualKundNumber}</strong>
+                      <strong className="font-mono text-sm text-stone-900">{lang === 'hi' ? 'कुण्ड ' : 'Kund '}{manualKundNumber}</strong>
                       {manualZoneName ? ` (${manualZoneName})` : ''}
                     </span>
                   </span>

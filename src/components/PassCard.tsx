@@ -1,7 +1,10 @@
 import React from 'react';
+import QRCode from 'qrcode';
 import { Booking } from '../types';
-import { EVENT_DETAILS, getZoneForKund } from '../data/eventConfig';
-import { Flame, Printer, Download, Share2, CheckCircle2, ArrowLeft, ShieldCheck, MapPin, Calendar, Clock } from 'lucide-react';
+import { EVENT_DETAILS } from '../data/eventConfig';
+import { findSectorByKund } from '../data/zoneConfig';
+import { HavanKundIcon } from './Common/HavanKundIcon';
+import { Printer, Download, Share2, CheckCircle2, ArrowLeft, ShieldCheck, MapPin, Calendar, Clock } from 'lucide-react';
 
 interface PassCardProps {
   booking: Booking;
@@ -16,9 +19,39 @@ export const PassCard: React.FC<PassCardProps> = ({
 }) => {
   const [copied, setCopied] = React.useState(false);
   const [downloading, setDownloading] = React.useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = React.useState<string>('');
 
-  // Collect unique allocated kund numbers
-  const uniqueKunds = Array.from(new Set(booking.allocations.map((a) => a.kundNumber)));
+  // Collect unique allocated kund numbers, strictly parsed as numbers
+  const uniqueKunds = React.useMemo(() => {
+    const numbers = (booking.allocations || [])
+      .map((a) => Number(a.kundNumber))
+      .filter((n) => !isNaN(n) && n > 0);
+    return Array.from(new Set(numbers));
+  }, [booking.allocations]);
+
+  // Generate authentic QR code encoding the exact booking code for Gate Admission
+  React.useEffect(() => {
+    const bookingCode = booking.id || 'MY-2026-0000';
+    QRCode.toDataURL(bookingCode, {
+      width: 256,
+      margin: 1,
+      color: {
+        dark: '#1c1917',
+        light: '#ffffff',
+      },
+    })
+      .then((url) => setQrCodeDataUrl(url))
+      .catch((err) => console.error('Error generating QR code:', err));
+  }, [booking.id]);
+
+  // Format zone and sector description for pass
+  const getZoneSectorDisplay = (kNum: number) => {
+    const match = findSectorByKund(kNum);
+    if (!match) return '';
+    return lang === 'hi'
+      ? `${match.zone.shortName} (${match.sector.nameHi})`
+      : `${match.zone.shortName} (${match.sector.name})`;
+  };
 
   const handlePrint = () => {
     window.print();
@@ -26,7 +59,6 @@ export const PassCard: React.FC<PassCardProps> = ({
 
   const handleDownloadPDF = () => {
     setDownloading(true);
-    // Standard browser print-to-PDF flow
     setTimeout(() => {
       window.print();
       setDownloading(false);
@@ -34,7 +66,8 @@ export const PassCard: React.FC<PassCardProps> = ({
   };
 
   const handleShare = () => {
-    const text = `*2151 Kundiya Mahayagya Agra - Yagya Pravesh Patra*\nBooking ID: ${booking.id}\nYagyakarta: ${booking.yagyakarta.fullName}\nAllocated Kund(s): ${uniqueKunds.map((k) => `#${k} (${getZoneForKund(k).name})`).join(', ')}\nDevotees: ${booking.participants.length}\nVenue: ${EVENT_DETAILS.venue}\nDates: 14–21 Dec 2026`;
+    const kundsText = uniqueKunds.map((k) => `Kund ${k}${getZoneSectorDisplay(k) ? ` [${getZoneSectorDisplay(k)}]` : ''}`).join(', ');
+    const text = `*2151 Kundiya Mahayagya Agra - Yagya Pravesh Patra*\nBooking Code: ${booking.id}\nYagyakarta: ${booking.yagyakarta.fullName}\nAllocated: ${kundsText}\nDevotees: ${booking.participants.length}\nAddress: ${booking.yagyakarta.address || ''}, ${booking.yagyakarta.city}\nVenue: ${EVENT_DETAILS.venue}\nDates: 14–21 Dec 2026`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
@@ -52,13 +85,13 @@ export const PassCard: React.FC<PassCardProps> = ({
           </div>
           <p className="text-emerald-900 leading-relaxed text-[11px]">
             {lang === 'hi'
-              ? `आपके परिवार (${booking.participants.length} सदस्य) को कुंड #${uniqueKunds.join(', #')} पर एक साथ स्थान आवंटित किया गया है। पुष्टि एसएमएस +91 ${booking.yagyakarta.primaryMobile} पर प्रेषित हो चुका है।`
-              : `Your group of ${booking.participants.length} devotees is allocated together at Kund #${uniqueKunds.join(', #')}. SMS confirmation dispatched to +91 ${booking.yagyakarta.primaryMobile}.`}
+              ? `आपके परिवार (${booking.participants.length} सदस्य) को ${uniqueKunds.map((k) => `कुण्ड ${k}`).join(', ')} पर एक साथ स्थान आवंटित किया गया है। पुष्टि एसएमएस +91 ${booking.yagyakarta.primaryMobile} पर प्रेषित हो चुका है।`
+              : `Your group of ${booking.participants.length} devotees is allocated together at ${uniqueKunds.map((k) => `Kund ${k}`).join(', ')}. SMS confirmation dispatched to +91 ${booking.yagyakarta.primaryMobile}.`}
           </p>
         </div>
       </div>
 
-      {/* 2. Prominent Action Bar (Print, Download PDF, Share) - Clear & Non-Interfering */}
+      {/* 2. Prominent Action Bar (Print, Download PDF, Share) */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-3 rounded-2xl bg-white border border-stone-200 shadow-xs print:hidden">
         <button
           onClick={onBackToHome}
@@ -99,15 +132,15 @@ export const PassCard: React.FC<PassCardProps> = ({
         </div>
       </div>
 
-      {/* 3. The Digital Yagya Pravesh Patra (Clean, High-Legibility Printable Pass) */}
+      {/* 3. The Digital Yagya Pravesh Patra */}
       <div className="bg-white rounded-3xl border-2 border-stone-300 shadow-xl overflow-hidden print:border-black print:shadow-none">
         
         {/* Pass Header */}
         <div className="bg-rose-900 text-amber-50 px-6 py-5 border-b-2 border-amber-400">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300">
-                <Flame className="w-5 h-5 fill-amber-300/40" />
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300">
+                <HavanKundIcon status="selected" size={30} />
               </div>
               <div>
                 <div className="text-[10px] font-semibold text-amber-300 uppercase tracking-widest">
@@ -122,32 +155,38 @@ export const PassCard: React.FC<PassCardProps> = ({
               </div>
             </div>
 
-            {/* Booking ID Badge */}
+            {/* Booking Code Badge */}
             <div className="self-start sm:self-auto bg-black/30 px-3.5 py-1.5 rounded-xl border border-amber-400/30 text-right">
-              <div className="text-[9px] text-amber-300 uppercase font-semibold">Booking ID</div>
+              <div className="text-[9px] text-amber-300 uppercase font-semibold">Booking Code</div>
               <div className="text-sm font-extrabold font-mono text-white tracking-wider">{booking.id}</div>
             </div>
           </div>
         </div>
 
-        {/* Primary Highlight: Allocated Kund & Enclosure */}
+        {/* Primary Highlight: Allocated Physical Kund & Zone/Sector (No Divya Sanctum prefix, No #) */}
         <div className="bg-amber-50/70 border-b border-amber-200/80 px-6 py-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
               <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-0.5">
-                {lang === 'hi' ? 'आवंटित भौतिक कुंड एवं परिक्षेत्र' : 'Allocated Physical Kund & Enclosure'}
+                {lang === 'hi' ? 'आवंटित भौतिक कुण्ड' : 'Allocated Physical Kund'}
               </div>
-              <div className="flex flex-wrap items-baseline gap-2">
+              <div className="flex flex-wrap items-baseline gap-2.5">
                 <span className="text-3xl font-extrabold text-rose-950 font-serif">
-                  {uniqueKunds.map((k) => `कुंड #${k}`).join(', ')}
+                  {uniqueKunds.length > 0
+                    ? uniqueKunds.map((k) => (lang === 'hi' ? `कुण्ड ${k}` : `Kund ${k}`)).join(', ')
+                    : (lang === 'hi' ? 'कुण्ड आवंटित' : 'Kund Allocated')}
                 </span>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-rose-900 text-amber-100">
-                  {uniqueKunds.map((k) => getZoneForKund(k).name).join(' / ')}
-                </span>
+
+                {/* Optional Zone & Sector badge if available */}
+                {uniqueKunds.length > 0 && uniqueKunds[0] && getZoneSectorDisplay(uniqueKunds[0]) && (
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-900 text-amber-100">
+                    {uniqueKunds.map((k) => getZoneSectorDisplay(k)).filter(Boolean).join(' / ')}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-stone-600 mt-1">
                 {lang === 'hi'
-                  ? 'परिवार के सभी सदस्य इसी कुंड पर एक साथ बैठेंगे। कृपया सत्र से 45 मिनट पूर्व पहुंचें।'
+                  ? 'परिवार के सभी सदस्य इसी कुण्ड पर एक साथ बैठेंगे। कृपया सत्र से 45 मिनट पूर्व पहुंचें।'
                   : 'All family members seated together at this Kund. Arrive 45 mins prior.'}
               </p>
             </div>
@@ -181,19 +220,20 @@ export const PassCard: React.FC<PassCardProps> = ({
                   +91 {booking.yagyakarta.primaryMobile}
                   {booking.yagyakarta.secondaryMobile ? ` · Alt: +91 ${booking.yagyakarta.secondaryMobile}` : ''}
                 </div>
-                {booking.yagyakarta.address && (
-                  <div className="text-stone-700 font-medium text-[11px] leading-snug">
-                    <span className="font-semibold text-stone-900">{lang === 'hi' ? 'पता: ' : 'Address: '}</span>
-                    {booking.yagyakarta.address}
-                  </div>
-                )}
+                
+                {/* MANDATORY ADDRESS FIELD ON PASS */}
+                <div className="text-stone-700 bg-white p-2 rounded-xl border border-stone-200/90 text-[11px] leading-snug">
+                  <span className="font-bold text-stone-900">{lang === 'hi' ? 'आवासीय पता: ' : 'Address: '}</span>
+                  <span>{booking.yagyakarta.address || (lang === 'hi' ? 'पंजीकृत पता' : 'Registered Address')}</span>
+                </div>
+
                 <div className="text-stone-600">
                   {booking.yagyakarta.city}, {booking.yagyakarta.state} {booking.yagyakarta.pincode ? `- ${booking.yagyakarta.pincode}` : ''}
                   {booking.yagyakarta.gotra ? ` · Gotra: ${booking.yagyakarta.gotra}` : ''}
                 </div>
               </div>
 
-              {/* Members */}
+              {/* Members List */}
               <div className="space-y-1.5">
                 <div className="text-xs font-bold text-stone-800 uppercase tracking-wider">
                   {lang === 'hi' ? 'उपस्थित साधक सदस्य' : 'Devotees Seated Together'}
@@ -219,52 +259,35 @@ export const PassCard: React.FC<PassCardProps> = ({
               </div>
             </div>
 
-            {/* Right: High-Contrast QR Code for Gate Scanning */}
+            {/* Right: Authentic Scannable QR Code for Gate Attendance */}
             <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-stone-50 border border-stone-200 text-center space-y-2.5">
               <div className="p-2.5 bg-white rounded-xl shadow-xs border border-stone-200">
-                <svg className="w-28 h-28 text-stone-900" viewBox="0 0 100 100" fill="currentColor">
-                  <rect x="0" y="0" width="30" height="30" rx="3" />
-                  <rect x="5" y="5" width="20" height="20" fill="white" />
-                  <rect x="10" y="10" width="10" height="10" />
-
-                  <rect x="70" y="0" width="30" height="30" rx="3" />
-                  <rect x="75" y="5" width="20" height="20" fill="white" />
-                  <rect x="80" y="10" width="10" height="10" />
-
-                  <rect x="0" y="70" width="30" height="30" rx="3" />
-                  <rect x="5" y="75" width="20" height="20" fill="white" />
-                  <rect x="10" y="80" width="10" height="10" />
-
-                  <rect x="36" y="10" width="8" height="8" />
-                  <rect x="48" y="10" width="14" height="6" />
-                  <rect x="36" y="24" width="6" height="18" />
-                  <rect x="46" y="24" width="16" height="16" />
-                  <rect x="10" y="46" width="18" height="6" />
-                  <rect x="22" y="54" width="12" height="10" />
-                  <rect x="42" y="46" width="10" height="10" />
-                  <rect x="58" y="46" width="16" height="8" />
-                  <rect x="72" y="38" width="8" height="16" />
-                  <rect x="84" y="42" width="10" height="8" />
-                  <rect x="42" y="68" width="16" height="6" />
-                  <rect x="56" y="78" width="18" height="14" />
-                  <rect x="82" y="68" width="12" height="8" />
-                  <rect x="80" y="84" width="14" height="8" />
-                </svg>
+                {qrCodeDataUrl ? (
+                  <img
+                    src={qrCodeDataUrl}
+                    alt={`Admission QR Code for ${booking.id}`}
+                    className="w-28 h-28 object-contain"
+                  />
+                ) : (
+                  <div className="w-28 h-28 flex items-center justify-center bg-stone-100 text-stone-400 font-mono text-xs">
+                    Generating QR...
+                  </div>
+                )}
               </div>
 
               <div className="text-center">
                 <div className="text-[11px] font-bold text-stone-800 uppercase">Gate Entry Pass</div>
-                <div className="text-[10px] text-stone-500 font-mono">TOKEN: YGY-{booking.id.replace('MY-2026-', '')}</div>
+                <div className="text-[11px] text-stone-900 font-bold font-mono">{booking.id}</div>
                 <div className="text-[10px] text-emerald-700 font-semibold mt-0.5 flex items-center justify-center gap-1">
-                  <ShieldCheck className="w-3 h-3" />
-                  <span>Verified Token</span>
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Gate Scannable</span>
                 </div>
               </div>
             </div>
 
           </div>
 
-          {/* Session Timetable */}
+          {/* Session Timetable (Plain numbers, no #) */}
           <div className="space-y-2 pt-2 border-t border-stone-200">
             <div className="flex items-center justify-between text-xs font-bold text-stone-800 uppercase tracking-wider">
               <span>{lang === 'hi' ? 'परिवार सत्र समय सारिणी' : 'Family Session Timetable'}</span>
@@ -285,14 +308,14 @@ export const PassCard: React.FC<PassCardProps> = ({
                     </span>
                   </div>
                   <div className="text-right font-mono font-bold text-rose-900">
-                    Kund #{alloc.kundNumber}
+                    {lang === 'hi' ? 'कुण्ड ' : 'Kund '}{alloc.kundNumber}
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Protocol */}
+          {/* Guidelines */}
           <div className="p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200 text-xs text-stone-700 space-y-1">
             <div className="font-bold text-amber-950">
               {lang === 'hi' ? 'प्रवेश एवं यज्ञशाला निर्देश:' : 'Entry Guidelines:'}

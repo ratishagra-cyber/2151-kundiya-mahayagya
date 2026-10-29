@@ -213,7 +213,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                               ({alloc.session === 'morning' ? 'Morning 8-11 AM' : 'Afternoon 1-4 PM'})
                             </span>
                             <span className="ml-2 font-mono font-bold text-rose-900">
-                              Kund #{alloc.kundNumber} ({alloc.zone})
+                              Kund {alloc.kundNumber} ({alloc.zone})
                             </span>
                             <span className="ml-2 text-stone-500 font-mono">
                               [{alloc.participantCount} seated together]

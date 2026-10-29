@@ -3,6 +3,7 @@ import {
   Users, 
   Flame, 
   Lock, 
+  Unlock, 
   CheckCircle2, 
   AlertCircle, 
   X, 
@@ -11,9 +12,11 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
-  Info
+  Info,
+  ShieldAlert
 } from 'lucide-react';
 import { SectorConfig, ZoneConfig } from '../../data/zoneConfig';
+import { HavanKundIcon } from '../Common/HavanKundIcon';
 
 export interface KundDetailInfo {
   kundNumber: number;
@@ -34,6 +37,9 @@ interface KundSeatGridProps {
   sector: SectorConfig;
   kundDetailsMap: Record<number, KundDetailInfo>;
   onSelectBooking?: (bookingCode: string) => void;
+  date?: string;
+  session?: string;
+  onBlockToggled?: () => void;
   lang?: 'en' | 'hi';
 }
 
@@ -42,9 +48,15 @@ export const KundSeatGrid: React.FC<KundSeatGridProps> = ({
   sector,
   kundDetailsMap,
   onSelectBooking,
+  date = '2026-12-14',
+  session = 'morning',
+  onBlockToggled,
   lang = 'hi',
 }) => {
   const [activeKundNumber, setActiveKundNumber] = React.useState<number | null>(null);
+  const [blockReasonInput, setBlockReasonInput] = React.useState<string>('VIP / Reserved');
+  const [isBlockingLoading, setIsBlockingLoading] = React.useState<boolean>(false);
+  const [blockActionMessage, setBlockActionMessage] = React.useState<string | null>(null);
 
   // Generate all kund numbers in this sector range [startKund..endKund]
   const kundNumbers = React.useMemo(() => {
@@ -64,23 +76,63 @@ export const KundSeatGrid: React.FC<KundSeatGridProps> = ({
       }
     : null;
 
+  // Handle Administrative Block / Unblock action
+  const handleToggleBlock = async (action: 'block' | 'unblock') => {
+    if (!activeKundNumber) return;
+    setIsBlockingLoading(true);
+    setBlockActionMessage(null);
+
+    try {
+      const res = await fetch('/api/admin/block-kund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          kundNumber: activeKundNumber,
+          date,
+          session,
+          reason: blockReasonInput.trim() || 'VIP / Reserved by Admin',
+          blockedBy: 'Admin Operator',
+        }),
+      });
+
+      const data = await res.json();
+      if (data && data.success) {
+        setBlockActionMessage(
+          action === 'block'
+            ? (lang === 'hi' ? `कुण्ड ${activeKundNumber} सफलतापूर्वक ब्लॉक कर दिया गया।` : `Kund ${activeKundNumber} blocked successfully.`)
+            : (lang === 'hi' ? `कुण्ड ${activeKundNumber} अनब्लॉक कर दिया गया।` : `Kund ${activeKundNumber} unblocked successfully.`)
+        );
+        if (onBlockToggled) {
+          onBlockToggled();
+        }
+      } else {
+        setBlockActionMessage(data?.error || 'Failed to toggle block status.');
+      }
+    } catch (err: any) {
+      setBlockActionMessage(err?.message || 'Network error updating block status.');
+    } finally {
+      setIsBlockingLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      {/* Sector Header & Legend */}
+      {/* Sector Header & Legend (Plain numbers, no #) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
         <div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-stone-900 text-sm">
               {lang === 'hi' ? sector.nameHi : sector.name}
             </span>
-            <span className="text-xs font-mono text-stone-500 bg-white px-2 py-0.5 rounded-lg border border-stone-200">
-              Kund #{sector.startKund} – #{sector.endKund} ({sector.totalKunds} {lang === 'hi' ? 'कुण्ड' : 'kunds'})
+            <span className="text-xs font-mono text-stone-600 bg-white px-2.5 py-0.5 rounded-lg border border-stone-200">
+              {lang === 'hi' ? 'कुण्ड' : 'Kund'} {sector.startKund} – {sector.endKund} ({sector.totalKunds} {lang === 'hi' ? 'कुण्ड' : 'kunds'})
             </span>
           </div>
           <p className="text-[11px] text-stone-500 mt-0.5">
             {lang === 'hi' 
-              ? 'बस सीट प्रारूप: किसी भी कुण्ड पर क्लिक करके बैठे परिवारों का विवरण देखें।' 
-              : 'Bus-seat style grid: tap any kund to view seated families.'}
+              ? 'पारंपरिक हवन कुण्ड ग्रिड: किसी भी कुण्ड पर क्लिक करके बैठे परिवारों का विवरण अथवा ब्लॉक नियंत्रण देखें।' 
+              : 'Sacred Havan Kund grid: tap any kund to view seated devotees or manage operator block.'}
           </p>
         </div>
 
@@ -105,8 +157,7 @@ export const KundSeatGrid: React.FC<KundSeatGridProps> = ({
         </div>
       </div>
 
-      {/* Bus-Seat Style Grid Layout */}
-      {/* Arranged in rows of 5 seats with ergonomic touch targets */}
+      {/* Traditional Havan Kund Grid Layout */}
       <div className="bg-stone-100/70 p-3 sm:p-5 rounded-3xl border border-stone-200/90 shadow-inner">
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
           {kundNumbers.map((kNum) => {
@@ -118,15 +169,20 @@ export const KundSeatGrid: React.FC<KundSeatGridProps> = ({
             const isEmpty = !isBlocked && occupiedSeats === 0;
             const isSelected = activeKundNumber === kNum;
 
+            let status: 'empty' | 'partial' | 'full' | 'blocked' = 'empty';
             let seatClasses = '';
+
             if (isBlocked) {
+              status = 'blocked';
               seatClasses = 'bg-purple-100/90 text-purple-950 border-purple-300 hover:bg-purple-200';
             } else if (isFull) {
+              status = 'full';
               seatClasses = 'bg-rose-100/90 text-rose-950 border-rose-300 hover:bg-rose-200';
             } else if (isPartial) {
+              status = 'partial';
               seatClasses = 'bg-amber-100/90 text-amber-950 border-amber-300 hover:bg-amber-200';
             } else {
-              // Empty
+              status = 'empty';
               seatClasses = 'bg-white text-stone-700 border-emerald-300 hover:bg-emerald-50/80 hover:border-emerald-400';
             }
 
@@ -134,38 +190,34 @@ export const KundSeatGrid: React.FC<KundSeatGridProps> = ({
               <button
                 key={kNum}
                 type="button"
-                onClick={() => setActiveKundNumber(isSelected ? null : kNum)}
-                className={`relative group flex flex-col items-center justify-between p-2 rounded-xl border text-center transition-all cursor-pointer min-h-[58px] ${seatClasses} ${
+                onClick={() => {
+                  setActiveKundNumber(isSelected ? null : kNum);
+                  setBlockActionMessage(null);
+                }}
+                className={`relative group flex flex-col items-center justify-between p-2 rounded-2xl border text-center transition-all cursor-pointer min-h-[64px] ${seatClasses} ${
                   isSelected ? 'ring-2 ring-stone-900 ring-offset-2 scale-105 shadow-md z-10' : 'hover:scale-[1.02]'
                 }`}
-                title={`Kund #${kNum}: ${
+                title={`Kund ${kNum}: ${
                   isBlocked ? 'Blocked' : isFull ? 'Full (8/8)' : isPartial ? `Partial (${occupiedSeats}/8)` : 'Empty (0/8)'
                 }`}
               >
-                {/* Top mini indicator */}
-                <div className="w-full flex items-center justify-between text-[10px] leading-none mb-1">
-                  <span className="font-mono text-stone-400 group-hover:text-stone-700 text-[9px]">
-                    K
-                  </span>
-                  {isBlocked ? (
-                    <Lock className="w-2.5 h-2.5 text-purple-600" />
-                  ) : isFull ? (
-                    <Flame className="w-2.5 h-2.5 text-rose-600 fill-rose-600" />
-                  ) : isPartial ? (
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  ) : (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  )}
+                {/* Traditional Havan Kund line diagram */}
+                <div className="w-full flex items-center justify-center my-0.5">
+                  <HavanKundIcon
+                    status={status}
+                    size={24}
+                    showFlame={!isEmpty}
+                  />
                 </div>
 
-                {/* Kund Number (Bold mono) */}
+                {/* Kund Number (Plain digits, no #) */}
                 <div className="font-mono font-extrabold text-xs sm:text-sm tabular-nums leading-tight">
-                  #{kNum}
+                  {kNum}
                 </div>
 
                 {/* Capacity badge pill */}
                 <div className="mt-1 w-full flex justify-center">
-                  <span className={`text-[9px] font-mono px-1 py-0.2 rounded font-semibold ${
+                  <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded-md font-semibold ${
                     isBlocked 
                       ? 'bg-purple-200/80 text-purple-900' 
                       : isFull 
@@ -183,21 +235,21 @@ export const KundSeatGrid: React.FC<KundSeatGridProps> = ({
         </div>
       </div>
 
-      {/* Slide-in / Expanded Kund Details Panel */}
+      {/* Slide-in / Expanded Kund Details & Block Control Panel */}
       {activeKundInfo && (
-        <div className="mt-4 p-4 sm:p-5 bg-white rounded-3xl border-2 border-stone-900 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="mt-4 p-4 sm:p-6 bg-white rounded-3xl border-2 border-stone-900 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-start justify-between pb-3 border-b border-stone-200">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400 text-stone-950 flex flex-col items-center justify-center">
-                <span className="text-[10px] font-bold text-amber-900 leading-none">कुण्ड</span>
-                <span className="text-base font-extrabold font-mono">#{activeKundInfo.kundNumber}</span>
+              <div className="w-13 h-13 rounded-2xl bg-amber-500/20 border border-amber-400 text-stone-950 flex flex-col items-center justify-center">
+                <HavanKundIcon status={activeKundInfo.isBlocked ? 'blocked' : activeKundInfo.occupiedSeats > 0 ? 'partial' : 'empty'} size={28} />
+                <span className="text-[10px] font-mono font-extrabold">{activeKundInfo.kundNumber}</span>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-stone-900 font-serif">
-                    Kund #{activeKundInfo.kundNumber}
+                  <h3 className="text-base sm:text-lg font-bold text-stone-900 font-serif">
+                    {lang === 'hi' ? 'कुण्ड' : 'Kund'} {activeKundInfo.kundNumber}
                   </h3>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                     activeKundInfo.isBlocked
                       ? 'bg-purple-100 text-purple-900 border border-purple-300'
                       : activeKundInfo.occupiedSeats >= 8
@@ -230,8 +282,64 @@ export const KundSeatGrid: React.FC<KundSeatGridProps> = ({
             </button>
           </div>
 
+          {/* ADMIN KUND BLOCKING CONTROL (Requirement 3) */}
+          <div className="my-3 p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-purple-600" />
+                  <span>{lang === 'hi' ? 'ऑपरेटर ब्लॉक / अनब्लॉक नियंत्रण' : 'Operator Kund Block Control'}</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">
+                  {lang === 'hi'
+                    ? 'ब्लॉक किए गए कुण्ड सार्वजनिक आवंटन में उपलब्ध नहीं होंगे और kund_blocks तालिका में सुरक्षित रहेंगे।'
+                    : 'Blocked kunds are locked from public allocation for this session and stored in kund_blocks.'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {activeKundInfo.isBlocked ? (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleBlock('unblock')}
+                    disabled={isBlockingLoading}
+                    className="min-h-[40px] px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>{isBlockingLoading ? 'Updating...' : (lang === 'hi' ? 'कुण्ड अनब्लॉक करें' : 'Unblock Kund')}</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={blockReasonInput}
+                      onChange={(e) => setBlockReasonInput(e.target.value)}
+                      placeholder="Reason (e.g. VIP reserve)"
+                      className="min-h-[38px] px-3 rounded-xl border border-stone-300 bg-white text-xs text-stone-800 placeholder:text-stone-400 w-36 sm:w-44 focus:outline-hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleToggleBlock('block')}
+                      disabled={isBlockingLoading}
+                      className="min-h-[40px] px-4 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>{isBlockingLoading ? 'Updating...' : (lang === 'hi' ? 'कुण्ड ब्लॉक करें' : 'Block Kund')}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {blockActionMessage && (
+              <div className="mt-2.5 text-xs font-semibold text-purple-900 bg-purple-100/70 p-2 rounded-xl border border-purple-200">
+                {blockActionMessage}
+              </div>
+            )}
+          </div>
+
           {/* Capacity Progress Bar */}
-          <div className="py-3 border-b border-stone-100">
+          <div className="py-2 border-b border-stone-100">
             <div className="flex justify-between items-center text-xs mb-1.5">
               <span className="font-semibold text-stone-700">
                 {lang === 'hi' ? 'बैठने की कुल क्षमता:' : 'Seating Capacity:'}
@@ -256,7 +364,7 @@ export const KundSeatGrid: React.FC<KundSeatGridProps> = ({
             </div>
           </div>
 
-          {/* Blocked alert */}
+          {/* Blocked alert reason */}
           {activeKundInfo.isBlocked && (
             <div className="my-3 p-3 bg-purple-50 rounded-2xl border border-purple-200 text-purple-900 text-xs flex items-center gap-2">
               <Lock className="w-4 h-4 text-purple-600 shrink-0" />
