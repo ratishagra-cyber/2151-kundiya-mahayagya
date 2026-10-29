@@ -1,5 +1,20 @@
 import React from 'react';
-import { ShieldCheck, Flame, Users, Calendar, Phone, CheckCircle2, ChevronDown, ChevronUp, AlertCircle, ArrowLeft, Sun, Sunset } from 'lucide-react';
+import { 
+  ShieldCheck, 
+  Flame, 
+  Users, 
+  Calendar, 
+  Phone, 
+  CheckCircle2, 
+  ChevronDown, 
+  ChevronUp, 
+  AlertCircle, 
+  ArrowLeft, 
+  Sun, 
+  Sunset,
+  Sparkles,
+  MapPin
+} from 'lucide-react';
 import { Participant, YagyakartaDetails, DaySchedule } from '../../types';
 import { EVENT_DAYS } from '../../data/eventConfig';
 
@@ -7,6 +22,11 @@ interface StepReviewProps {
   yagyakarta: YagyakartaDetails;
   participants: Participant[];
   familySchedule: DaySchedule[];
+  allocationMode: 'automatic' | 'manual';
+  setAllocationMode: (mode: 'automatic' | 'manual') => void;
+  manualKundNumber: number | null;
+  manualZoneName: string | null;
+  onOpenManualPicker: () => void;
   onConfirm: () => void;
   onPrev: () => void;
   isSubmitting: boolean;
@@ -18,6 +38,11 @@ export const StepReview: React.FC<StepReviewProps> = ({
   yagyakarta,
   participants,
   familySchedule,
+  allocationMode,
+  setAllocationMode,
+  manualKundNumber,
+  manualZoneName,
+  onOpenManualPicker,
   onConfirm,
   onPrev,
   isSubmitting,
@@ -78,7 +103,7 @@ export const StepReview: React.FC<StepReviewProps> = ({
         </h2>
         <p className="text-xs text-stone-600">
           {lang === 'hi'
-            ? 'पुष्टि करते ही हमारे बेस्ट-फिट इंजन द्वारा आपको तुरंत भौतिक कुंड नंबर आवंटित कर दिया जाएगा।'
+            ? 'पुष्टि करते ही हमारे आवंटन इंजन द्वारा आपको तुरंत भौतिक कुंड नंबर आवंटित कर दिया जाएगा।'
             : 'Upon confirmation, our engine assigns your dedicated Kund and generates your E-Pass.'}
         </p>
       </div>
@@ -112,7 +137,7 @@ export const StepReview: React.FC<StepReviewProps> = ({
             {yagyakarta.secondaryMobile ? ` · Alt: +91 ${yagyakarta.secondaryMobile}` : ''}
           </div>
           {yagyakarta.address && (
-            <div className="text-stone-700 bg-stone-50 p-1.5 rounded-lg border border-stone-200/80 text-[11px] leading-snug">
+            <div className="text-stone-700 bg-stone-50 p-2 rounded-xl border border-stone-200/80 text-[11px] leading-snug">
               <span className="font-semibold text-stone-900">{lang === 'hi' ? 'पता: ' : 'Address: '}</span>
               {yagyakarta.address}
             </div>
@@ -225,6 +250,126 @@ export const StepReview: React.FC<StepReviewProps> = ({
         )}
       </div>
 
+      {/* REQUIREMENT 5: TWO ALLOCATION MODES (AUTOMATIC BEST-FIT VS MANUAL KUND PICKER) */}
+      <div className="p-4 rounded-2xl border border-stone-200 bg-white shadow-2xs space-y-3 text-xs">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+              {lang === 'hi' ? 'कुण्ड आवंटन पद्धति' : 'Kund Allocation Mode'}
+            </div>
+            <div className="font-bold text-stone-900 text-sm mt-0.5">
+              {lang === 'hi' ? 'आवंटन विकल्प चुनें' : 'Choose Allocation Method'}
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold">
+            {allocationMode === 'automatic'
+              ? (lang === 'hi' ? 'स्मार्ट ऑटो-आवंटन' : 'Smart Auto')
+              : (lang === 'hi' ? 'मैनुअल चयन' : 'Manual Pick')}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {/* Mode 1: Automatic Best-Fit */}
+          <button
+            type="button"
+            onClick={() => setAllocationMode('automatic')}
+            className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+              allocationMode === 'automatic'
+                ? 'bg-amber-50/70 border-amber-400 ring-2 ring-amber-400/50 shadow-xs'
+                : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>{lang === 'hi' ? 'ऑटोमैटिक (बेस्ट-फिट)' : 'Automatic (Best-Fit)'}</span>
+              </span>
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.2 rounded-full">
+                {lang === 'hi' ? 'अनुशंसित' : 'Recommended'}
+              </span>
+            </div>
+            <p className="text-[11px] text-stone-600 leading-relaxed">
+              {lang === 'hi'
+                ? 'स्मार्ट सिस्टम आपके पूरे परिवार (1–8 सदस्य) के लिए अनुकूलतम पवित्र कुण्ड स्वतः आरक्षित करेगा।'
+                : 'Algorithm automatically finds and locks the optimal Kund for your entire family group.'}
+            </p>
+          </button>
+
+          {/* Mode 2: Manual Selection */}
+          <button
+            type="button"
+            onClick={() => {
+              setAllocationMode('manual');
+              if (!manualKundNumber) {
+                onOpenManualPicker();
+              }
+            }}
+            className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+              allocationMode === 'manual'
+                ? 'bg-rose-50/70 border-rose-400 ring-2 ring-rose-400/50 shadow-xs'
+                : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-rose-600" />
+                <span>{lang === 'hi' ? 'मैनुअल (मानचित्र से चुनें)' : 'Manual (Visual Map)'}</span>
+              </span>
+              <span className="text-[10px] font-bold text-stone-500 bg-stone-200/80 px-2 py-0.2 rounded-full">
+                {lang === 'hi' ? 'वैकल्पिक' : 'Optional'}
+              </span>
+            </div>
+            <p className="text-[11px] text-stone-600 leading-relaxed">
+              {lang === 'hi'
+                ? '11 मण्डलीय जोन एवं कुण्ड ग्रिड से अपनी श्रद्धा व पसंद का कुण्ड स्वयं चुनें।'
+                : 'Browse 11 sacred zones and manually select your preferred Kund from the seat grid.'}
+            </p>
+          </button>
+        </div>
+
+        {/* If Manual Mode is selected, show current selected Kund and button to open/change */}
+        {allocationMode === 'manual' && (
+          <div className="mt-2 p-3.5 bg-rose-50/80 rounded-2xl border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold text-rose-950">
+                {manualKundNumber ? (
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      {lang === 'hi' ? 'चयनित पवित्र कुण्ड: ' : 'Chosen Sacred Kund: '}
+                      <strong className="font-mono text-sm text-stone-900">#{manualKundNumber}</strong>
+                      {manualZoneName ? ` (${manualZoneName})` : ''}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-rose-800 font-semibold">
+                    {lang === 'hi' ? '⚠️ अभी तक कोई कुण्ड चयनित नहीं हुआ है।' : '⚠️ No Kund selected yet.'}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-stone-600 mt-0.5">
+                {lang === 'hi'
+                  ? 'परिवार के सभी सदस्य प्रत्येक सत्र में इसी कुण्ड पर एक साथ बैठेंगे।'
+                  : 'All family members will attend all selected sessions at this specific Kund.'}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onOpenManualPicker}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-white border border-rose-300 text-rose-950 hover:bg-rose-100 font-bold text-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0 flex items-center gap-1.5 shadow-2xs"
+            >
+              <MapPin className="w-3.5 h-3.5 text-rose-600" />
+              <span>
+                {manualKundNumber
+                  ? (lang === 'hi' ? 'कुण्ड बदलें' : 'Change Kund')
+                  : (lang === 'hi' ? 'मानचित्र खोलें व कुण्ड चुनें' : 'Open Map & Pick Kund')}
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Allocation Error if any */}
       {allocationError && (
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-xs flex items-start gap-2.5">
@@ -253,7 +398,7 @@ export const StepReview: React.FC<StepReviewProps> = ({
           {isSubmitting ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>{lang === 'hi' ? 'कुंड आवंटन प्रक्रियाधीन...' : 'Allocating Best-Fit Kund...'}</span>
+              <span>{lang === 'hi' ? 'कुंड आवंटन प्रक्रियाधीन...' : 'Allocating Kund...'}</span>
             </>
           ) : (
             <>

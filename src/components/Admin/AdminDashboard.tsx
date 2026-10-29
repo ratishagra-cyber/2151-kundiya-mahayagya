@@ -1,7 +1,25 @@
 import React from 'react';
-import { Calendar, Clock, Flame, Users, Grid, RefreshCw, ShieldCheck, ListOrdered, UserPlus, History, Download, Lock, Smartphone, Laptop, LogOut } from 'lucide-react';
+import { 
+  Calendar, 
+  Clock, 
+  Flame, 
+  Users, 
+  Grid, 
+  RefreshCw, 
+  ShieldCheck, 
+  ListOrdered, 
+  UserPlus, 
+  History, 
+  Download, 
+  Lock, 
+  Smartphone, 
+  Laptop, 
+  LogOut,
+  LayoutDashboard 
+} from 'lucide-react';
 import { Booking, SessionType, AdminUser } from '../../types';
 import { EVENT_DAYS, EVENT_DETAILS } from '../../data/eventConfig';
+import { OperatorDashboard } from './OperatorDashboard';
 import { KundOccupancyMonitor } from './KundOccupancyMonitor';
 import { BookingsTable } from './BookingsTable';
 import { AdminManagementTab } from './AdminManagementTab';
@@ -28,7 +46,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   const [selectedDate, setSelectedDate] = React.useState<string>(EVENT_DAYS[0].date);
   const [selectedSession, setSelectedSession] = React.useState<SessionType>('morning');
-  const [subTab, setSubTab] = React.useState<'map' | 'directory' | 'admins' | 'audit'>('map');
+  const [subTab, setSubTab] = React.useState<'operator' | 'map' | 'directory' | 'admins' | 'audit'>('operator');
 
   // Modals state
   const [isBulkBlockModalOpen, setIsBulkBlockModalOpen] = React.useState(false);
@@ -131,130 +149,147 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* 3. Date & Session Controller Bar */}
-      <div className="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-4 sm:p-5 space-y-4">
-        
-        {/* Horizontal 8-Day Scroller */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">
-              Select Active Yagya Day (14–21 Dec 2026):
-            </label>
-            <span className="text-[11px] text-stone-400 font-mono">8 Days · 16 Total Sessions</span>
-          </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {EVENT_DAYS.map((day) => {
-              const isSelected = day.date === selectedDate;
-              return (
-                <button
-                  key={day.date}
-                  onClick={() => setSelectedDate(day.date)}
-                  className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border cursor-pointer ${
-                    isSelected
-                      ? 'bg-rose-900 text-amber-100 border-rose-950 shadow-xs'
-                      : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                  }`}
-                >
-                  <div className="font-bold">{day.shortLabel}</div>
-                  <div className="text-[10px] opacity-80 max-w-[120px] truncate">{day.tithi}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {/* 3. Subtabs Navigation Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {/* 1. OPERATOR DASHBOARD (Primary tab) */}
+        <button
+          onClick={() => setSubTab('operator')}
+          className={`min-h-[42px] flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
+            subTab === 'operator'
+              ? 'bg-stone-900 text-amber-300 border-stone-900 shadow-xs'
+              : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <LayoutDashboard className="w-4 h-4" />
+          <span>{lang === 'hi' ? 'ऑपरेटर डैशबोर्ड' : 'Operator Dashboard'}</span>
+        </button>
 
-        {/* Session Switcher & Subtab Selector */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-stone-100">
-          
-          {/* Morning / Afternoon Switcher */}
-          <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl w-fit">
-            <button
-              onClick={() => setSelectedSession('morning')}
-              className={`min-h-[40px] px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                selectedSession === 'morning'
-                  ? 'bg-amber-500 text-stone-950 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              ☀️ Morning (8:00 – 11:00 AM)
-            </button>
-            <button
-              onClick={() => setSelectedSession('afternoon')}
-              className={`min-h-[40px] px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                selectedSession === 'afternoon'
-                  ? 'bg-rose-900 text-white shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              🌅 Afternoon (1:00 – 4:00 PM)
-            </button>
-          </div>
+        {/* 2. 2,151 KUND MAP */}
+        <button
+          onClick={() => setSubTab('map')}
+          className={`min-h-[42px] flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
+            subTab === 'map'
+              ? 'bg-stone-900 text-amber-300 border-stone-900 shadow-xs'
+              : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <Grid className="w-4 h-4" />
+          <span>2,151 Kund Map</span>
+        </button>
 
-          {/* 4 Navigation Subtabs */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              onClick={() => setSubTab('map')}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                subTab === 'map'
-                  ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
-                  : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-              }`}
-            >
-              <Grid className="w-3.5 h-3.5" />
-              <span>2,151 Kund Map</span>
-            </button>
+        {/* 3. DEVOTEE DIRECTORY */}
+        <button
+          onClick={() => setSubTab('directory')}
+          className={`min-h-[42px] flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
+            subTab === 'directory'
+              ? 'bg-stone-900 text-amber-300 border-stone-900 shadow-xs'
+              : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <ListOrdered className="w-4 h-4" />
+          <span>Devotee Directory</span>
+        </button>
 
-            <button
-              onClick={() => setSubTab('directory')}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                subTab === 'directory'
-                  ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
-                  : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-              }`}
-            >
-              <ListOrdered className="w-3.5 h-3.5" />
-              <span>Devotee Directory</span>
-            </button>
+        {/* 4. STAFF & RBAC (Super Admin only or visible) */}
+        <button
+          onClick={() => setSubTab('admins')}
+          className={`min-h-[42px] flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
+            subTab === 'admins'
+              ? 'bg-stone-900 text-amber-300 border-stone-900 shadow-xs'
+              : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <UserPlus className="w-4 h-4" />
+          <span>Staff &amp; RBAC</span>
+        </button>
 
-            <button
-              onClick={() => setSubTab('admins')}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                subTab === 'admins'
-                  ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
-                  : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-              }`}
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Staff &amp; RBAC</span>
-            </button>
-
-            <button
-              onClick={() => setSubTab('audit')}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                subTab === 'audit'
-                  ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
-                  : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>Audit Trail</span>
-            </button>
-          </div>
-
-        </div>
-
+        {/* 5. AUDIT TRAIL */}
+        <button
+          onClick={() => setSubTab('audit')}
+          className={`min-h-[42px] flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
+            subTab === 'audit'
+              ? 'bg-stone-900 text-amber-300 border-stone-900 shadow-xs'
+              : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          <span>Audit Trail</span>
+        </button>
       </div>
 
       {/* 4. Subtab Content Area */}
-      {subTab === 'map' && (
-        <KundOccupancyMonitor
-          bookings={bookings}
-          selectedDate={selectedDate}
-          selectedSession={selectedSession}
+      {subTab === 'operator' && (
+        <OperatorDashboard
           currentAdmin={currentAdmin}
-          onDataRefresh={handleRefreshData}
           lang={lang}
         />
+      )}
+
+      {subTab === 'map' && (
+        <div className="space-y-6">
+          {/* Date & Session Controller Bar for the 2,151 Kund Map */}
+          <div className="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-4 sm:p-5 space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">
+                  Select Active Yagya Day (14–21 Dec 2026):
+                </label>
+                <span className="text-[11px] text-stone-400 font-mono">8 Days · 16 Total Sessions</span>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                {EVENT_DAYS.map((day) => {
+                  const isSelected = day.date === selectedDate;
+                  return (
+                    <button
+                      key={day.date}
+                      onClick={() => setSelectedDate(day.date)}
+                      className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border cursor-pointer ${
+                        isSelected
+                          ? 'bg-rose-900 text-amber-100 border-rose-950 shadow-xs'
+                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                      }`}
+                    >
+                      <div className="font-bold">{day.shortLabel}</div>
+                      <div className="text-[10px] opacity-80 max-w-[120px] truncate">{day.tithi}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl w-fit">
+              <button
+                onClick={() => setSelectedSession('morning')}
+                className={`min-h-[40px] px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedSession === 'morning'
+                    ? 'bg-amber-500 text-stone-950 shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                ☀️ Morning (8:00 – 11:00 AM)
+              </button>
+              <button
+                onClick={() => setSelectedSession('afternoon')}
+                className={`min-h-[40px] px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedSession === 'afternoon'
+                    ? 'bg-rose-900 text-white shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                🌅 Afternoon (1:00 – 4:00 PM)
+              </button>
+            </div>
+          </div>
+
+          <KundOccupancyMonitor
+            bookings={bookings}
+            selectedDate={selectedDate}
+            selectedSession={selectedSession}
+            currentAdmin={currentAdmin}
+            onDataRefresh={handleRefreshData}
+            lang={lang}
+          />
+        </div>
       )}
 
       {subTab === 'directory' && (

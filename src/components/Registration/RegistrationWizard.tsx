@@ -4,7 +4,8 @@ import { StepYagyakarta } from './StepYagyakarta';
 import { StepParticipants } from './StepParticipants';
 import { StepSessions } from './StepSessions';
 import { StepReview } from './StepReview';
-import { YagyakartaDetails, Participant, Booking, SessionType, DaySchedule } from '../../types';
+import { ManualKundPickerModal } from './ManualKundPickerModal';
+import { YagyakartaDetails, Participant, Booking, SessionType, DaySchedule, AllocatedSession } from '../../types';
 import { createDefaultSchedule, EVENT_DAYS } from '../../data/eventConfig';
 import { allocateBestFitKunds } from '../../services/allocationEngine';
 import { getStoredBookings } from '../../services/storageService';
@@ -51,6 +52,12 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
 
   // Family-level unified schedule across 8 days
   const [familySchedule, setFamilySchedule] = React.useState<DaySchedule[]>(createDefaultSchedule());
+
+  // Two Allocation Modes: Automatic (Best-Fit) vs Manual (Visual Map)
+  const [allocationMode, setAllocationMode] = React.useState<'automatic' | 'manual'>('automatic');
+  const [manualKundNumber, setManualKundNumber] = React.useState<number | null>(null);
+  const [manualZoneName, setManualZoneName] = React.useState<string | null>(null);
+  const [isManualPickerOpen, setIsManualPickerOpen] = React.useState<boolean>(false);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [allocationError, setAllocationError] = React.useState<string | null>(null);
@@ -113,16 +120,41 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
         return;
       }
 
-      // 2. Fetch existing bookings from storage to check current Kund occupancies
-      const existingBookings = getStoredBookings();
+      let finalAllocations: AllocatedSession[] = [];
 
-      // 3. Run Best-Fit deterministic allocation engine with strict family integrity
-      const result = allocateBestFitKunds(allocationRequests, existingBookings);
+      // REQUIREMENT 5: TWO ALLOCATION MODES
+      if (allocationMode === 'manual') {
+        if (!manualKundNumber) {
+          setAllocationError(
+            lang === 'hi'
+              ? 'कृपया मानचित्र से अपनी पसंद का कुण्ड चुनें अथवा ऑटोमैटिक आवंटन विकल्प चुनें।'
+              : 'Please select a Kund from the visual map or switch to Automatic mode.'
+          );
+          setIsSubmitting(false);
+          setIsManualPickerOpen(true);
+          return;
+        }
 
-      if (!result.success) {
-        setAllocationError(result.error || 'Allocation failed due to capacity constraints.');
-        setIsSubmitting(false);
-        return;
+        // Assign chosen manual kund to all selected family sessions
+        finalAllocations = allocationRequests.map((req) => ({
+          date: req.date,
+          session: req.session,
+          kundNumber: manualKundNumber,
+          zone: manualZoneName || 'Zone',
+          participantIds: familyMemberIds,
+          participantCount: familyMemberIds.length,
+        }));
+      } else {
+        // Automatic Mode: Best-Fit deterministic allocation engine
+        const existingBookings = getStoredBookings();
+        const result = allocateBestFitKunds(allocationRequests, existingBookings);
+
+        if (!result.success) {
+          setAllocationError(result.error || 'Allocation failed due to capacity constraints.');
+          setIsSubmitting(false);
+          return;
+        }
+        finalAllocations = result.allocations;
       }
 
       // 4. Generate unique Booking ID
@@ -141,7 +173,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
         yagyakarta,
         participants: participantsWithSchedule,
         familySchedule,
-        allocations: result.allocations,
+        allocations: finalAllocations,
         status: 'confirmed',
       };
 
@@ -284,6 +316,11 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
             yagyakarta={yagyakarta}
             participants={participants}
             familySchedule={familySchedule}
+            allocationMode={allocationMode}
+            setAllocationMode={setAllocationMode}
+            manualKundNumber={manualKundNumber}
+            manualZoneName={manualZoneName}
+            onOpenManualPicker={() => setIsManualPickerOpen(true)}
             onConfirm={handleFinalConfirm}
             onPrev={() => setCurrentStep(3)}
             isSubmitting={isSubmitting}
@@ -292,6 +329,19 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
           />
         )}
       </div>
+
+      {/* Manual Kund Picker Modal */}
+      <ManualKundPickerModal
+        isOpen={isManualPickerOpen}
+        onClose={() => setIsManualPickerOpen(false)}
+        onSelectKund={(kNum, zName) => {
+          setManualKundNumber(kNum);
+          setManualZoneName(zName);
+        }}
+        currentSelectedKund={manualKundNumber}
+        familySize={participants.length}
+        lang={lang}
+      />
 
     </div>
   );

@@ -2,6 +2,9 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import registerHandler from './api/register';
+import adminBookingsHandler from './api/admin/bookings';
+import adminBookingDetailHandler from './api/admin/booking-detail';
+import adminOccupancyHandler from './api/admin/occupancy';
 
 dotenv.config();
 
@@ -11,12 +14,39 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Mount Vercel-compatible /api/register serverless route for full-stack local dev and self-hosting
+  // Mount Vercel-compatible /api routes for full-stack local dev and self-hosting
   app.all('/api/register', async (req, res) => {
     try {
       await registerHandler(req, res);
     } catch (err: any) {
       console.error('API register error in server:', err);
+      res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+    }
+  });
+
+  app.all('/api/admin/bookings', async (req, res) => {
+    try {
+      await adminBookingsHandler(req, res);
+    } catch (err: any) {
+      console.error('API admin bookings error in server:', err);
+      res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+    }
+  });
+
+  app.all('/api/admin/booking-detail', async (req, res) => {
+    try {
+      await adminBookingDetailHandler(req, res);
+    } catch (err: any) {
+      console.error('API admin booking-detail error in server:', err);
+      res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+    }
+  });
+
+  app.all('/api/admin/occupancy', async (req, res) => {
+    try {
+      await adminOccupancyHandler(req, res);
+    } catch (err: any) {
+      console.error('API admin occupancy error in server:', err);
       res.status(500).json({ success: false, error: err.message || 'Internal server error' });
     }
   });
