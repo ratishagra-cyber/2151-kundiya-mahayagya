@@ -55,12 +55,29 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
 
   // Two Allocation Modes: Automatic (Best-Fit) vs Manual (Visual Map)
   const [allocationMode, setAllocationMode] = React.useState<'automatic' | 'manual'>('automatic');
-  const [manualKundNumber, setManualKundNumber] = React.useState<number | null>(null);
-  const [manualZoneName, setManualZoneName] = React.useState<string | null>(null);
+  const [sessionKundAllocations, setSessionKundAllocations] = React.useState<
+    Record<string, { kundNumber: number; zone: string }>
+  >({});
+  const [activePickerSessionKey, setActivePickerSessionKey] = React.useState<string | null>(null);
   const [isManualPickerOpen, setIsManualPickerOpen] = React.useState<boolean>(false);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [allocationError, setAllocationError] = React.useState<string | null>(null);
+
+  // List of active sessions for the modal
+  const selectedSessionOptions = React.useMemo(() => {
+    const list: Array<{ date: string; session: SessionType; dayLabel: string }> = [];
+    for (const day of EVENT_DAYS) {
+      const sched = familySchedule.find((s) => s.date === day.date);
+      if (sched?.morning) {
+        list.push({ date: day.date, session: 'morning', dayLabel: day.shortLabel });
+      }
+      if (sched?.afternoon) {
+        list.push({ date: day.date, session: 'afternoon', dayLabel: day.shortLabel });
+      }
+    }
+    return list;
+  }, [familySchedule]);
 
   const steps = [
     { num: 1, labelEn: 'Coordinator', labelHi: 'समन्वयक', icon: User },
@@ -122,29 +139,38 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
 
       let finalAllocations: AllocatedSession[] = [];
 
-      // REQUIREMENT 5: TWO ALLOCATION MODES
-      if (allocationMode === 'manual' || (manualKundNumber !== null && manualKundNumber > 0)) {
-        const chosenKund = manualKundNumber ? Number(manualKundNumber) : null;
-        if (!chosenKund || isNaN(chosenKund)) {
+      // REQUIREMENT 1 & 2: MULTI-DAY / MULTI-SESSION ALLOCATION & MANUAL SELECTION PRESERVATION
+      if (allocationMode === 'manual') {
+        // Validate that each requested session has an assigned Kund
+        const unallocated = allocationRequests.find((req) => {
+          const key = `${req.date}_${req.session}`;
+          return !sessionKundAllocations[key]?.kundNumber;
+        });
+
+        if (unallocated) {
           setAllocationError(
             lang === 'hi'
-              ? 'कृपया मानचित्र से अपनी पसंद का कुण्ड चुनें अथवा ऑटोमैटिक आवंटन विकल्प चुनें।'
-              : 'Please select a Kund from the visual map or switch to Automatic mode.'
+              ? `कृपया सत्र (${unallocated.date} ${unallocated.session}) के लिए कुण्ड चुनें या ऑटोमैटिक मोड चुनें।`
+              : `Please select a Kund for ${unallocated.date} (${unallocated.session}) or choose Automatic mode.`
           );
           setIsSubmitting(false);
+          setActivePickerSessionKey(`${unallocated.date}_${unallocated.session}`);
           setIsManualPickerOpen(true);
           return;
         }
 
-        // Assign chosen manual kund to all selected family sessions
-        finalAllocations = allocationRequests.map((req) => ({
-          date: req.date,
-          session: req.session,
-          kundNumber: chosenKund,
-          zone: manualZoneName || 'Zone',
-          participantIds: familyMemberIds,
-          participantCount: familyMemberIds.length,
-        }));
+        finalAllocations = allocationRequests.map((req) => {
+          const key = `${req.date}_${req.session}`;
+          const chosen = sessionKundAllocations[key];
+          return {
+            date: req.date,
+            session: req.session,
+            kundNumber: Number(chosen.kundNumber),
+            zone: chosen.zone || 'Zone 1',
+            participantIds: familyMemberIds,
+            participantCount: familyMemberIds.length,
+          };
+        });
       } else {
         // Automatic Mode: Best-Fit deterministic allocation engine
         const existingBookings = getStoredBookings();
@@ -328,9 +354,11 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
             familySchedule={familySchedule}
             allocationMode={allocationMode}
             setAllocationMode={setAllocationMode}
-            manualKundNumber={manualKundNumber}
-            manualZoneName={manualZoneName}
-            onOpenManualPicker={() => setIsManualPickerOpen(true)}
+            sessionKundAllocations={sessionKundAllocations}
+            onOpenManualPicker={(sKey) => {
+              if (sKey) setActivePickerSessionKey(sKey);
+              setIsManualPickerOpen(true);
+            }}
             onConfirm={handleFinalConfirm}
             onPrev={() => setCurrentStep(3)}
             isSubmitting={isSubmitting}
@@ -344,12 +372,13 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
       <ManualKundPickerModal
         isOpen={isManualPickerOpen}
         onClose={() => setIsManualPickerOpen(false)}
-        onSelectKund={(kNum, zName) => {
-          setManualKundNumber(kNum);
-          setManualZoneName(zName);
+        selectedSessions={selectedSessionOptions}
+        initialSessionKey={activePickerSessionKey}
+        sessionAllocations={sessionKundAllocations}
+        onSaveAllocations={(newAllocations) => {
+          setSessionKundAllocations(newAllocations);
           setAllocationMode('manual');
         }}
-        currentSelectedKund={manualKundNumber}
         familySize={participants.length}
         lang={lang}
       />

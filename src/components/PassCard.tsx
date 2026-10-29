@@ -66,8 +66,10 @@ export const PassCard: React.FC<PassCardProps> = ({
   };
 
   const handleShare = () => {
-    const kundsText = uniqueKunds.map((k) => `Kund ${k}${getZoneSectorDisplay(k) ? ` [${getZoneSectorDisplay(k)}]` : ''}`).join(', ');
-    const text = `*2151 Kundiya Mahayagya Agra - Yagya Pravesh Patra*\nBooking Code: ${booking.id}\nYagyakarta: ${booking.yagyakarta.fullName}\nAllocated: ${kundsText}\nDevotees: ${booking.participants.length}\nAddress: ${booking.yagyakarta.address || ''}, ${booking.yagyakarta.city}\nVenue: ${EVENT_DETAILS.venue}\nDates: 14–21 Dec 2026`;
+    const sessionsSummary = booking.allocations
+      .map((a) => `${a.date} (${a.session === 'morning' ? 'Morning' : 'Afternoon'}): Kund ${a.kundNumber}${getZoneSectorDisplay(Number(a.kundNumber)) ? ` [${getZoneSectorDisplay(Number(a.kundNumber))}]` : ''}`)
+      .join('; ');
+    const text = `*2151 Kundiya Mahayagya Agra - Yagya Pravesh Patra*\nBooking Code: ${booking.id}\nYagyakarta: ${booking.yagyakarta.fullName}\nAllocated Sessions:\n${sessionsSummary}\nDevotees: ${booking.participants.length}\nAddress: ${booking.yagyakarta.address || ''}, ${booking.yagyakarta.city}\nVenue: ${EVENT_DETAILS.venue}\nDates: 14–21 Dec 2026`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
@@ -84,9 +86,13 @@ export const PassCard: React.FC<PassCardProps> = ({
             {lang === 'hi' ? 'पंजीकरण एवं कुंड आवंटन सफलतापूर्वक पूर्ण हुआ!' : 'Registration & Kund Allocation Confirmed!'}
           </div>
           <p className="text-emerald-900 leading-relaxed text-[11px]">
-            {lang === 'hi'
-              ? `आपके परिवार (${booking.participants.length} सदस्य) को ${uniqueKunds.map((k) => `कुण्ड ${k}`).join(', ')} पर एक साथ स्थान आवंटित किया गया है। पुष्टि एसएमएस +91 ${booking.yagyakarta.primaryMobile} पर प्रेषित हो चुका है।`
-              : `Your group of ${booking.participants.length} devotees is allocated together at ${uniqueKunds.map((k) => `Kund ${k}`).join(', ')}. SMS confirmation dispatched to +91 ${booking.yagyakarta.primaryMobile}.`}
+            {uniqueKunds.length === 1
+              ? (lang === 'hi'
+                  ? `आपके परिवार (${booking.participants.length} सदस्य) को कुण्ड ${uniqueKunds[0]} पर एक साथ स्थान आवंटित किया गया है। पुष्टि एसएमएस +91 ${booking.yagyakarta.primaryMobile} पर प्रेषित हो चुका है।`
+                  : `Your group of ${booking.participants.length} devotees is allocated together at Kund ${uniqueKunds[0]}. SMS confirmation dispatched to +91 ${booking.yagyakarta.primaryMobile}.`)
+              : (lang === 'hi'
+                  ? `आपके परिवार (${booking.participants.length} सदस्य) को प्रत्येक सत्र के लिए कुण्ड (${booking.allocations.map((a) => `${a.date} ${a.session === 'morning' ? 'प्रातः' : 'दोपहर'}: कुण्ड ${a.kundNumber}`).join(', ')}) पर एक साथ स्थान आवंटित किया गया है।`
+                  : `Your group of ${booking.participants.length} devotees is allocated together session-by-session (${booking.allocations.map((a) => `${a.date} ${a.session}: Kund ${a.kundNumber}`).join(', ')}).`)}
           </p>
         </div>
       </div>
@@ -163,31 +169,62 @@ export const PassCard: React.FC<PassCardProps> = ({
           </div>
         </div>
 
-        {/* Primary Highlight: Allocated Physical Kund & Zone/Sector (No Divya Sanctum prefix, No #) */}
+        {/* Primary Highlight: Allocated Physical Kund & Zone/Sector (No #, session-aware) */}
         <div className="bg-amber-50/70 border-b border-amber-200/80 px-6 py-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-0.5">
+              <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">
                 {lang === 'hi' ? 'आवंटित भौतिक कुण्ड' : 'Allocated Physical Kund'}
               </div>
-              <div className="flex flex-wrap items-baseline gap-2.5">
-                <span className="text-3xl font-extrabold text-rose-950 font-serif">
-                  {uniqueKunds.length > 0
-                    ? uniqueKunds.map((k) => (lang === 'hi' ? `कुण्ड ${k}` : `Kund ${k}`)).join(', ')
-                    : (lang === 'hi' ? 'कुण्ड आवंटित' : 'Kund Allocated')}
-                </span>
 
-                {/* Optional Zone & Sector badge if available */}
-                {uniqueKunds.length > 0 && uniqueKunds[0] && getZoneSectorDisplay(uniqueKunds[0]) && (
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-900 text-amber-100">
-                    {uniqueKunds.map((k) => getZoneSectorDisplay(k)).filter(Boolean).join(' / ')}
+              {uniqueKunds.length <= 1 ? (
+                <div className="flex flex-wrap items-baseline gap-2.5">
+                  <span className="text-3xl font-extrabold text-rose-950 font-serif">
+                    {uniqueKunds.length === 1
+                      ? (lang === 'hi' ? `कुण्ड ${uniqueKunds[0]}` : `Kund ${uniqueKunds[0]}`)
+                      : (lang === 'hi' ? 'कुण्ड आवंटित' : 'Kund Allocated')}
                   </span>
-                )}
-              </div>
-              <p className="text-xs text-stone-600 mt-1">
+
+                  {/* Optional Zone & Sector badge if available */}
+                  {uniqueKunds.length === 1 && getZoneSectorDisplay(uniqueKunds[0]) && (
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-900 text-amber-100">
+                      {getZoneSectorDisplay(uniqueKunds[0])}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                /* Multiple sessions with different kunds: Show distinct session breakdown */
+                <div className="space-y-2">
+                  <div className="text-xs font-bold text-stone-700">
+                    {lang === 'hi' ? 'सत्र-वार कुण्ड आवंटन (बहु-सत्रीय):' : 'Multi-Session Allocated Kunds:'}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {booking.allocations.map((alloc, idx) => (
+                      <div
+                        key={idx}
+                        className="px-3 py-1.5 rounded-xl bg-white border border-amber-300 shadow-2xs flex items-center gap-2"
+                      >
+                        <span className="text-xs font-semibold text-stone-700">
+                          {alloc.date} ({alloc.session === 'morning' ? '☀️ Morning' : '🌅 Afternoon'}):
+                        </span>
+                        <span className="text-sm font-extrabold text-rose-950 font-mono">
+                          {lang === 'hi' ? 'कुण्ड ' : 'Kund '}{alloc.kundNumber}
+                        </span>
+                        {getZoneSectorDisplay(Number(alloc.kundNumber)) && (
+                          <span className="text-[10px] font-semibold text-stone-500">
+                            [{getZoneSectorDisplay(Number(alloc.kundNumber))}]
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-stone-600 mt-1.5">
                 {lang === 'hi'
-                  ? 'परिवार के सभी सदस्य इसी कुण्ड पर एक साथ बैठेंगे। कृपया सत्र से 45 मिनट पूर्व पहुंचें।'
-                  : 'All family members seated together at this Kund. Arrive 45 mins prior.'}
+                  ? 'परिवार के सभी सदस्य अपने निर्धारित सत्र में इसी कुण्ड पर एक साथ बैठेंगे। कृपया सत्र से 45 मिनट पूर्व पहुंचें।'
+                  : 'All family members seated together at their allocated Kund for each session. Arrive 45 mins prior.'}
               </p>
             </div>
 
@@ -287,31 +324,44 @@ export const PassCard: React.FC<PassCardProps> = ({
 
           </div>
 
-          {/* Session Timetable (Plain numbers, no #) */}
+          {/* Session Timetable (Plain numbers, no #, distinct per session) */}
           <div className="space-y-2 pt-2 border-t border-stone-200">
             <div className="flex items-center justify-between text-xs font-bold text-stone-800 uppercase tracking-wider">
-              <span>{lang === 'hi' ? 'परिवार सत्र समय सारिणी' : 'Family Session Timetable'}</span>
+              <span>{lang === 'hi' ? 'परिवार सत्र समय सारिणी एवं आवंटित कुण्ड' : 'Family Session Timetable & Allocated Kunds'}</span>
               <span className="text-[10px] text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full font-semibold normal-case">
                 {lang === 'hi' ? `सभी ${booking.participants.length} सदस्य एक साथ` : `All ${booking.participants.length} members together`}
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {booking.allocations.map((alloc, idx) => (
-                <div
-                  key={idx}
-                  className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between text-xs"
-                >
-                  <div>
-                    <span className="font-bold text-stone-900">{alloc.date}</span>
-                    <span className="text-stone-600 ml-1.5 font-medium">
-                      ({alloc.session === 'morning' ? '☀️ Morning 8-11 AM' : '🌅 Afternoon 1-4 PM'})
-                    </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {booking.allocations.map((alloc, idx) => {
+                const zoneText = getZoneSectorDisplay(Number(alloc.kundNumber));
+                return (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between text-xs hover:border-amber-300 transition-colors"
+                  >
+                    <div>
+                      <div className="font-bold text-stone-900 flex items-center gap-1.5">
+                        <span>{alloc.date}</span>
+                        <span className="text-stone-600 font-medium">
+                          ({alloc.session === 'morning' ? '☀️ Morning 8-11 AM' : '🌅 Afternoon 1-4 PM'})
+                        </span>
+                      </div>
+                      {zoneText && (
+                        <div className="text-[11px] text-stone-500 mt-0.5 font-medium">
+                          {zoneText}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0 pl-2">
+                      <div className="text-[9px] font-bold text-stone-400 uppercase tracking-wider">Allocated Kund</div>
+                      <div className="font-mono font-extrabold text-sm sm:text-base text-rose-950">
+                        {lang === 'hi' ? 'कुण्ड ' : 'Kund '}{alloc.kundNumber}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right font-mono font-bold text-rose-900">
-                    {lang === 'hi' ? 'कुण्ड ' : 'Kund '}{alloc.kundNumber}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

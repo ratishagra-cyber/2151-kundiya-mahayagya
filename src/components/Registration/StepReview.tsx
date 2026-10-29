@@ -18,15 +18,19 @@ import {
 import { Participant, YagyakartaDetails, DaySchedule } from '../../types';
 import { EVENT_DAYS } from '../../data/eventConfig';
 
+export interface SessionKundAllocationItem {
+  kundNumber: number;
+  zone: string;
+}
+
 interface StepReviewProps {
   yagyakarta: YagyakartaDetails;
   participants: Participant[];
   familySchedule: DaySchedule[];
   allocationMode: 'automatic' | 'manual';
   setAllocationMode: (mode: 'automatic' | 'manual') => void;
-  manualKundNumber: number | null;
-  manualZoneName: string | null;
-  onOpenManualPicker: () => void;
+  sessionKundAllocations: Record<string, SessionKundAllocationItem>;
+  onOpenManualPicker: (sessionKey?: string) => void;
   onConfirm: () => void;
   onPrev: () => void;
   isSubmitting: boolean;
@@ -40,8 +44,7 @@ export const StepReview: React.FC<StepReviewProps> = ({
   familySchedule,
   allocationMode,
   setAllocationMode,
-  manualKundNumber,
-  manualZoneName,
+  sessionKundAllocations,
   onOpenManualPicker,
   onConfirm,
   onPrev,
@@ -300,9 +303,7 @@ export const StepReview: React.FC<StepReviewProps> = ({
             type="button"
             onClick={() => {
               setAllocationMode('manual');
-              if (!manualKundNumber) {
-                onOpenManualPicker();
-              }
+              onOpenManualPicker();
             }}
             className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
               allocationMode === 'manual'
@@ -313,7 +314,7 @@ export const StepReview: React.FC<StepReviewProps> = ({
             <div className="flex items-center justify-between mb-1.5">
               <span className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-rose-600" />
-                <span>{lang === 'hi' ? 'मैनुअल (मानचित्र से चुनें)' : 'Manual (Visual Map)'}</span>
+                <span>{lang === 'hi' ? 'मैनुअल (सत्र-वार मानचित्र से चुनें)' : 'Manual (Visual Map per Session)'}</span>
               </span>
               <span className="text-[10px] font-bold text-stone-500 bg-stone-200/80 px-2 py-0.2 rounded-full">
                 {lang === 'hi' ? 'वैकल्पिक' : 'Optional'}
@@ -321,53 +322,154 @@ export const StepReview: React.FC<StepReviewProps> = ({
             </div>
             <p className="text-[11px] text-stone-600 leading-relaxed">
               {lang === 'hi'
-                ? '11 मण्डलीय जोन एवं कुण्ड ग्रिड से अपनी श्रद्धा व पसंद का कुण्ड स्वयं चुनें।'
-                : 'Browse 11 sacred zones and manually select your preferred Kund from the seat grid.'}
+                ? 'प्रत्येक सत्र के लिए अपनी पसंद का पवित्र कुण्ड चुनें। अलग-अलग दिनों के लिए भिन्न कुण्ड भी चुन सकते हैं।'
+                : 'Select your preferred sacred Kund for each session individually from the visual seat grid.'}
             </p>
           </button>
         </div>
 
-        {/* If Manual Mode is selected, show current selected Kund and button to open/change */}
-        {allocationMode === 'manual' && (
-          <div className="mt-2 p-3.5 bg-rose-50/80 rounded-2xl border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="text-xs font-semibold text-rose-950">
-                {manualKundNumber ? (
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>
-                      {lang === 'hi' ? 'चयनित पवित्र कुण्ड: ' : 'Chosen Sacred Kund: '}
-                      <strong className="font-mono text-sm text-stone-900">{lang === 'hi' ? 'कुण्ड ' : 'Kund '}{manualKundNumber}</strong>
-                      {manualZoneName ? ` (${manualZoneName})` : ''}
-                    </span>
-                  </span>
-                ) : (
-                  <span className="text-rose-800 font-semibold">
-                    {lang === 'hi' ? '⚠️ अभी तक कोई कुण्ड चयनित नहीं हुआ है।' : '⚠️ No Kund selected yet.'}
-                  </span>
-                )}
-              </div>
-              <div className="text-[11px] text-stone-600 mt-0.5">
-                {lang === 'hi'
-                  ? 'परिवार के सभी सदस्य प्रत्येक सत्र में इसी कुण्ड पर एक साथ बैठेंगे।'
-                  : 'All family members will attend all selected sessions at this specific Kund.'}
-              </div>
-            </div>
+        {/* If Manual Mode is selected, show session-wise allocations */}
+        {allocationMode === 'manual' && (() => {
+          const selectedSessionList: Array<{
+            date: string;
+            session: 'morning' | 'afternoon';
+            dayLabel: string;
+            timeLabel: string;
+            key: string;
+          }> = [];
 
-            <button
-              type="button"
-              onClick={onOpenManualPicker}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-white border border-rose-300 text-rose-950 hover:bg-rose-100 font-bold text-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0 flex items-center gap-1.5 shadow-2xs"
-            >
-              <MapPin className="w-3.5 h-3.5 text-rose-600" />
-              <span>
-                {manualKundNumber
-                  ? (lang === 'hi' ? 'कुण्ड बदलें' : 'Change Kund')
-                  : (lang === 'hi' ? 'मानचित्र खोलें व कुण्ड चुनें' : 'Open Map & Pick Kund')}
-              </span>
-            </button>
-          </div>
-        )}
+          for (const d of activeDaysSummary) {
+            if (d.morning) {
+              selectedSessionList.push({
+                date: d.date,
+                session: 'morning',
+                dayLabel: d.dayLabel,
+                timeLabel: '☀️ Morning 8:00 AM – 11:00 AM',
+                key: `${d.date}_morning`,
+              });
+            }
+            if (d.afternoon) {
+              selectedSessionList.push({
+                date: d.date,
+                session: 'afternoon',
+                dayLabel: d.dayLabel,
+                timeLabel: '🌅 Afternoon 1:00 PM – 4:00 PM',
+                key: `${d.date}_afternoon`,
+              });
+            }
+          }
+
+          const allAssigned = selectedSessionList.every((s) => sessionKundAllocations[s.key]?.kundNumber);
+
+          return (
+            <div className="mt-3 p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-2.5">
+                <div>
+                  <div className="text-xs font-bold text-stone-900">
+                    {lang === 'hi' ? 'सत्र-वार कुण्ड आवंटन विवरण' : 'Session-by-Session Kund Allocations'}
+                  </div>
+                  <div className="text-[11px] text-stone-500">
+                    {lang === 'hi'
+                      ? 'प्रत्येक सत्र के लिए कुण्ड संख्या की पुष्टि करें या मानचित्र खोलकर बदलें:'
+                      : 'Verify or pick Kund numbers for each individual session:'}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onOpenManualPicker()}
+                  className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-stone-900 text-amber-300 hover:bg-stone-800 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{lang === 'hi' ? 'मानचित्र खोलें' : 'Open Visual Map'}</span>
+                </button>
+              </div>
+
+              {/* Session rows */}
+              <div className="space-y-2">
+                {selectedSessionList.map((item) => {
+                  const alloc = sessionKundAllocations[item.key];
+                  const hasKund = alloc && alloc.kundNumber;
+
+                  return (
+                    <div
+                      key={item.key}
+                      className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
+                        hasKund
+                          ? 'bg-white border-stone-200'
+                          : 'bg-rose-50/70 border-rose-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                          item.session === 'morning' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {item.session === 'morning' ? <Sun className="w-4 h-4" /> : <Sunset className="w-4 h-4" />}
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs text-stone-900">
+                            {item.date} ({item.dayLabel}) · {item.session === 'morning' ? 'Morning 8-11 AM' : 'Afternoon 1-4 PM'}
+                          </div>
+                          {hasKund ? (
+                            <div className="text-[11px] text-emerald-800 font-semibold flex items-center gap-1 mt-0.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>
+                                {lang === 'hi' ? 'निर्धारित: ' : 'Assigned: '}
+                                <strong className="font-mono text-xs text-stone-900">{lang === 'hi' ? 'कुण्ड ' : 'Kund '}{alloc.kundNumber}</strong>
+                                {alloc.zone ? ` (${alloc.zone})` : ''}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-rose-700 font-semibold mt-0.5">
+                              {lang === 'hi' ? '⚠️ कुण्ड चयनित नहीं है' : '⚠️ No Kund selected yet'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => onOpenManualPicker(item.key)}
+                        className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0 self-start sm:self-auto flex items-center gap-1.5 ${
+                          hasKund
+                            ? 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300'
+                            : 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs'
+                        }`}
+                      >
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span>
+                          {hasKund
+                            ? (lang === 'hi' ? 'कुण्ड बदलें' : 'Change')
+                            : (lang === 'hi' ? 'कुण्ड चुनें' : 'Pick Kund')}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {allAssigned ? (
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-medium flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>
+                    {lang === 'hi'
+                      ? 'सभी सत्रों के लिए कुण्ड सफलता से चुन लिए गए हैं।'
+                      : 'All selected sessions have designated sacred Kunds.'}
+                  </span>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    {lang === 'hi'
+                      ? 'कृपया पुष्टि करने से पहले सभी सत्रों के लिए कुण्ड का चयन करें।'
+                      : 'Please select a Kund for all sessions before confirmation.'}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Allocation Error if any */}

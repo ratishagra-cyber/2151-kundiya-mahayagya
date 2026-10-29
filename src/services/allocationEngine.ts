@@ -236,7 +236,7 @@ export function reassignSessionKund(
   if (currentOccupied + neededSeats > EVENT_DETAILS.seatsPerKund) {
     return {
       success: false,
-      message: `Kund #${targetKundNumber} cannot accommodate ${neededSeats} participants. Current occupancy: ${currentOccupied}/8. Available: ${8 - currentOccupied}. Family cannot be split.`,
+      message: `Kund ${targetKundNumber} cannot accommodate ${neededSeats} participants. Current occupancy: ${currentOccupied}/8. Available: ${8 - currentOccupied}. Family cannot be split.`,
     };
   }
 
@@ -261,7 +261,7 @@ export function reassignSessionKund(
 
   return {
     success: true,
-    message: `Successfully reassigned to Kund #${targetKundNumber} (${zoneId}) without splitting family.`,
+    message: `Successfully reassigned to Kund ${targetKundNumber} (${zoneId}) without splitting family.`,
     updatedBookings,
   };
 }
