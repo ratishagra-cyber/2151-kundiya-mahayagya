@@ -52,6 +52,34 @@ export const StepYagyakarta: React.FC<StepYagyakartaProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-5 pb-24 sm:pb-4">
       
+      {/* Honeypot field for bot prevention: invisible to users, hidden with CSS, inaccessible to keyboard */}
+      <div
+        aria-hidden="true"
+        style={{
+          display: 'none',
+          position: 'absolute',
+          left: '-9999px',
+          top: '-9999px',
+          opacity: 0,
+          height: 0,
+          width: 0,
+          zIndex: -1,
+          overflow: 'hidden',
+          pointerEvents: 'none',
+        }}
+        className="hidden"
+      >
+        <input
+          type="text"
+          name="website"
+          id="website"
+          value={details.website || ''}
+          onChange={(e) => onChange({ ...details, website: e.target.value })}
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
+
       {/* Editorial Step Intro */}
       <div className="border-b border-stone-200 pb-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 uppercase tracking-wide">

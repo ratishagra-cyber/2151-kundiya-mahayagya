@@ -4,6 +4,7 @@ import { addBooking } from './storageService';
 export interface SaveRegistrationPayload {
   id?: string;
   bookingCode?: string;
+  website?: string;
   yagyakarta: YagyakartaDetails;
   participants: Participant[];
   allocations: AllocatedSession[];
@@ -39,12 +40,14 @@ export async function saveRegistration(
   const status = payload.status || 'confirmed';
   const { yagyakarta, participants, allocations } = payload;
   const familySchedule = ('familySchedule' in payload && payload.familySchedule) || undefined;
+  const website = ('website' in payload && payload.website) || payload.yagyakarta?.website || '';
 
   const registrationData = {
     bookingCode,
     id: bookingCode,
     createdAt,
     status,
+    website,
     yagyakarta,
     participants,
     allocations,

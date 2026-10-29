@@ -29,6 +29,7 @@ export interface YagyakartaDetails {
   pincode: string;
   gotra?: string;
   sankalpPurpose?: string;
+  website?: string; // Honeypot field for bot prevention
 }
 
 export interface AllocatedSession {

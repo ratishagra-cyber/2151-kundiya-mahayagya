@@ -72,10 +72,10 @@ export const BannerHero: React.FC<BannerHeroProps> = ({
 
           <button
             onClick={onOpenRetrieve}
-            className="w-full sm:w-auto min-h-[46px] px-5 py-2.5 rounded-2xl font-semibold text-xs text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            className="w-full sm:w-auto min-h-[46px] px-6 py-2.5 rounded-2xl font-bold text-xs sm:text-sm text-rose-950 bg-amber-100/80 hover:bg-amber-200/90 border border-amber-300 shadow-2xs transition-colors cursor-pointer flex items-center justify-center gap-2"
           >
-            <Ticket className="w-4 h-4 text-amber-700" />
-            <span>{lang === 'hi' ? 'प्रवेश पत्र / कुंड खोजें' : 'Retrieve Booking / E-Pass'}</span>
+            <Ticket className="w-4 h-4 text-rose-900" />
+            <span>{lang === 'hi' ? 'प्रवेश पत्र देखें' : 'Find Your Pass'}</span>
           </button>
         </div>
 

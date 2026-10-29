@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import registerHandler from './api/register';
+import retrieveHandler from './api/retrieve';
 import adminBookingsHandler from './api/admin/bookings';
 import adminBookingDetailHandler from './api/admin/booking-detail';
 import adminOccupancyHandler from './api/admin/occupancy';
@@ -22,6 +23,15 @@ async function startServer() {
       await registerHandler(req, res);
     } catch (err: any) {
       console.error('API register error in server:', err);
+      res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+    }
+  });
+
+  app.all('/api/retrieve', async (req, res) => {
+    try {
+      await retrieveHandler(req, res);
+    } catch (err: any) {
+      console.error('API retrieve error in server:', err);
       res.status(500).json({ success: false, error: err.message || 'Internal server error' });
     }
   });

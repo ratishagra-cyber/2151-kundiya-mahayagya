@@ -35,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
     },
     {
       id: 'retrieve' as const,
-      labelEn: 'Retrieve Pass / Kund',
+      labelEn: 'Find Your Pass',
       labelHi: 'प्रवेश पत्र देखें',
       icon: Ticket,
     },
