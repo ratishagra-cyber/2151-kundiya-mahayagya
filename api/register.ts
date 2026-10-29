@@ -10,7 +10,6 @@ async function findBestKund(
   session: string,
   familySize: number
 ): Promise<number | null> {
-  // Get current occupancy for this date/session
   const rows = await sql`
     select kund_number, coalesce(sum(participant_count), 0)::int as occupied
     from allocations
@@ -23,14 +22,12 @@ async function findBestKund(
     occupancy.set(row.kund_number, row.occupied);
   }
 
-  // Also exclude blocked kunds
   const blocked = await sql`
     select kund_number from kund_blocks
     where event_date = ${eventDate} and session = ${session}
   `;
   const blockedSet = new Set(blocked.map((b: any) => b.kund_number));
 
-  // Prefer partially filled kunds that can fit the family
   let bestPartial: number | null = null;
   let bestPartialOccupied = -1;
 
@@ -47,7 +44,6 @@ async function findBestKund(
 
   if (bestPartial !== null) return bestPartial;
 
-  // Otherwise take the first empty kund
   for (let k = 1; k <= TOTAL_KUNDS; k++) {
     if (blockedSet.has(k)) continue;
     const occupied = occupancy.get(k) || 0;
@@ -66,14 +62,14 @@ export default async function handler(req: any, res: any) {
     const body = req.body || {};
     const y = body.yagyakarta || {};
 
-    const yagyakarta_name = (y.fullName || '').trim();
-    const primary_mobile = (y.primaryMobile || '').trim();
-    const secondary_mobile = (y.secondaryMobile || '').trim() || null;
+    const yagyakarta_name = (y.fullName || y.yagyakarta_name || '').trim();
+    const primary_mobile = (y.primaryMobile || y.primary_mobile || '').trim();
+    const secondary_mobile = (y.secondaryMobile || y.secondary_mobile || '').trim() || null;
     const email = (y.email || '').trim() || null;
-    const address = (y.address || '').trim();
-    const city = (y.city || '').trim();
-    const state = (y.state || '').trim() || null;
-    const gotra = (y.gotra || '').trim() || null;
+    const address = (y.address || body.address || '').trim();
+    const city = (y.city || body.city || '').trim();
+    const state = (y.state || body.state || '').trim() || null;
+    const gotra = (y.gotra || body.gotra || '').trim() || null;
 
     const participants = body.participants || [];
     const familySchedule = body.familySchedule || [];
@@ -81,25 +77,24 @@ export default async function handler(req: any, res: any) {
     if (!yagyakarta_name || !primary_mobile || !city || !address) {
       return res.status(400).json({
         error: 'Missing required fields',
+        details: { yagyakarta_name, primary_mobile, city, address },
       });
     }
 
     const familySize = Math.max(participants.length, 1);
     const bookingCode = body.bookingCode || body.id || 'MYA-' + Date.now().toString().slice(-8);
 
-    // Insert booking
     const [booking] = await sql`
       insert into bookings (
         booking_code, yagyakarta_name, primary_mobile, secondary_mobile,
-        email, city, state, gotra
+        email, address, city, state, gotra
       ) values (
         ${bookingCode}, ${yagyakarta_name}, ${primary_mobile}, ${secondary_mobile},
-        ${email}, ${city}, ${state}, ${gotra}
+        ${email}, ${address}, ${city}, ${state}, ${gotra}
       )
       returning id, booking_code
     `;
 
-    // Insert participants
     for (const p of participants) {
       await sql`
         insert into participants (booking_id, name, age, gender, relationship, mobile)
@@ -114,7 +109,6 @@ export default async function handler(req: any, res: any) {
       `;
     }
 
-    // Allocate kunds for each selected session
     const allocated: any[] = [];
     for (const s of familySchedule) {
       if (!s.morning && !s.afternoon) continue;
