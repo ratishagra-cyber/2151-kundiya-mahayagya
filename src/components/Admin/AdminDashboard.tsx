@@ -15,11 +15,13 @@ import {
   Smartphone, 
   Laptop, 
   LogOut,
-  LayoutDashboard 
+  LayoutDashboard,
+  QrCode
 } from 'lucide-react';
 import { Booking, SessionType, AdminUser } from '../../types';
 import { EVENT_DAYS, EVENT_DETAILS } from '../../data/eventConfig';
 import { OperatorDashboard } from './OperatorDashboard';
+import { AttendanceScanner } from './AttendanceScanner';
 import { KundOccupancyMonitor } from './KundOccupancyMonitor';
 import { BookingsTable } from './BookingsTable';
 import { AdminManagementTab } from './AdminManagementTab';
@@ -46,7 +48,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   const [selectedDate, setSelectedDate] = React.useState<string>(EVENT_DAYS[0].date);
   const [selectedSession, setSelectedSession] = React.useState<SessionType>('morning');
-  const [subTab, setSubTab] = React.useState<'operator' | 'map' | 'directory' | 'admins' | 'audit'>('operator');
+  const [subTab, setSubTab] = React.useState<'operator' | 'attendance' | 'map' | 'directory' | 'admins' | 'audit'>('operator');
 
   // Modals state
   const [isBulkBlockModalOpen, setIsBulkBlockModalOpen] = React.useState(false);
@@ -164,7 +166,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <span>{lang === 'hi' ? 'ऑपरेटर डैशबोर्ड' : 'Operator Dashboard'}</span>
         </button>
 
-        {/* 2. 2,151 KUND MAP */}
+        {/* 2. MARK ATTENDANCE */}
+        <button
+          onClick={() => setSubTab('attendance')}
+          className={`min-h-[42px] flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
+            subTab === 'attendance'
+              ? 'bg-rose-900 text-amber-200 border-rose-950 shadow-xs'
+              : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <QrCode className="w-4 h-4" />
+          <span>{lang === 'hi' ? 'उपस्थिति दर्ज करें' : 'Mark Attendance'}</span>
+        </button>
+
+        {/* 3. 2,151 KUND MAP */}
         <button
           onClick={() => setSubTab('map')}
           className={`min-h-[42px] flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
@@ -177,7 +192,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <span>2,151 Kund Map</span>
         </button>
 
-        {/* 3. DEVOTEE DIRECTORY */}
+        {/* 4. DEVOTEE DIRECTORY */}
         <button
           onClick={() => setSubTab('directory')}
           className={`min-h-[42px] flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
@@ -190,7 +205,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <span>Devotee Directory</span>
         </button>
 
-        {/* 4. STAFF & RBAC (Super Admin only or visible) */}
+        {/* 5. STAFF & RBAC (Super Admin only or visible) */}
         <button
           onClick={() => setSubTab('admins')}
           className={`min-h-[42px] flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
@@ -203,7 +218,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <span>Staff &amp; RBAC</span>
         </button>
 
-        {/* 5. AUDIT TRAIL */}
+        {/* 6. AUDIT TRAIL */}
         <button
           onClick={() => setSubTab('audit')}
           className={`min-h-[42px] flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
@@ -221,6 +236,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {subTab === 'operator' && (
         <OperatorDashboard
           currentAdmin={currentAdmin}
+          lang={lang}
+        />
+      )}
+
+      {subTab === 'attendance' && (
+        <AttendanceScanner
+          currentDate={selectedDate}
+          currentSession={selectedSession}
+          operatorName={currentAdmin.name}
           lang={lang}
         />
       )}

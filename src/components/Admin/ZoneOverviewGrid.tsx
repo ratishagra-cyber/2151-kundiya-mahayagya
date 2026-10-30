@@ -359,14 +359,14 @@ export const ZoneOverviewGrid: React.FC<ZoneOverviewGridProps> = ({
                 </div>
                 <div className="text-xs text-rose-700 mt-0.5">
                   {lang === 'hi'
-                    ? 'इस जोन के सभी 4 सेक्टरों (A, B, C, D) में कोई रिक्त स्थान उपलब्ध नहीं है (सभी 8 सीटें भरी या ब्लॉक हैं)। ऑपरेटर मैन्युअल रूप से किसी भी सेक्टर का निरीक्षण व प्रबंधन कर सकते हैं।'
-                    : 'All sectors in this zone are currently at 100% capacity (all 8 seats occupied or blocked). Operators can still manually inspect or manage individual kunds below.'}
+                    ? 'इस जोन के सभी 5 सेक्टरों (A, B, C, D, E) में कोई रिक्त स्थान उपलब्ध नहीं है (सभी 8 सीटें भरी या ब्लॉक हैं)। ऑपरेटर मैन्युअल रूप से किसी भी सेक्टर का निरीक्षण व प्रबंधन कर सकते हैं।'
+                    : 'All 5 sectors in this zone (A, B, C, D, E) are currently at 100% capacity (all 8 seats occupied or blocked). Operators can still manually inspect or manage individual kunds below.'}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Sector Tabs with Smart Live Vacancy Badges (4 Sectors: A, B, C, D) */}
+          {/* Sector Tabs with Smart Live Vacancy Badges (5 Sectors: A, B, C, D, E) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
             {activeZone.sectors.map((sec) => {
               const isSelected = sec.id === activeSector?.id;

@@ -19,7 +19,8 @@ import {
   Sparkles,
   LayoutGrid,
   FileSpreadsheet,
-  Camera
+  Camera,
+  QrCode
 } from 'lucide-react';
 import { EVENT_DAYS } from '../../data/eventConfig';
 import { SessionType, AdminUser } from '../../types';
@@ -375,8 +376,8 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({
                 : 'text-stone-700 hover:text-stone-950'
             }`}
           >
-            <Camera className="w-4 h-4" />
-            <span>{lang === 'hi' ? 'गेट अटेंडेंस स्कैनर' : 'Attendance Scanner'}</span>
+            <QrCode className="w-4 h-4" />
+            <span>{lang === 'hi' ? 'उपस्थिति दर्ज करें' : 'Mark Attendance'}</span>
           </button>
         </div>
 

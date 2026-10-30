@@ -20,18 +20,21 @@ export interface ZoneConfig {
 
 function createSectorsForZone(zoneId: number, startKund: number, endKund: number): SectorConfig[] {
   const total = endKund - startKund + 1;
-  const sectorCount = 4;
+  const sectorCount = 5;
   const baseSize = Math.floor(total / sectorCount);
-  const remainder = total % sectorCount;
 
-  const sectorLetters = ['A', 'B', 'C', 'D'];
-  const sectorHindiLetters = ['क', 'ख', 'ग', 'घ'];
+  const sectorLetters = ['A', 'B', 'C', 'D', 'E'];
+  const sectorHindiLetters = ['क', 'ख', 'ग', 'घ', 'ङ'];
   const sectors: SectorConfig[] = [];
 
   let currentStart = startKund;
   for (let i = 0; i < sectorCount; i++) {
-    const size = baseSize + (i < remainder ? 1 : 0);
-    const currentEnd = currentStart + size - 1;
+    // For 195 kunds (Zones 1-10): 5 sectors of exactly 39 kunds.
+    // For Zone 11 (201 kunds, 1951-2151): 4 sectors of 40 and last sector adjusted to 41 (2111-2151).
+    const isLast = i === sectorCount - 1;
+    const currentEnd = isLast ? endKund : currentStart + baseSize - 1;
+    const size = currentEnd - currentStart + 1;
+
     sectors.push({
       id: `z${zoneId}-sec-${sectorLetters[i].toLowerCase()}`,
       name: `Sector ${sectorLetters[i]}`,

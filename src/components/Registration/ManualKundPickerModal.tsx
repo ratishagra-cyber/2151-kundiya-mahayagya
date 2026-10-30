@@ -463,7 +463,7 @@ export const ManualKundPickerModal: React.FC<ManualKundPickerModalProps> = ({
             </div>
           </div>
 
-          {/* Sector Tabs (A, B, C, D) */}
+          {/* Sector Tabs (A, B, C, D, E) */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
