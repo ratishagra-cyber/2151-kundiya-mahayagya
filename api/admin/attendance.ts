@@ -21,6 +21,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         b.id, 
         b.booking_code, 
         b.yagyakarta_name,
+        b.primary_mobile,
+        b.city,
+        b.address,
         (SELECT COUNT(*)::int FROM participants p WHERE p.booking_id = b.id) as participant_count
       FROM bookings b
       WHERE b.booking_code = ${booking_code}
@@ -33,6 +36,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const b = booking[0];
     const participantCount = b.participant_count || 1;
+
+    // Check for matching allocation for this date/session
+    const allocation = await sql`
+      SELECT kund_number
+      FROM allocations
+      WHERE booking_id = ${b.id}
+        AND event_date = ${event_date}
+        AND session = ${session}
+      LIMIT 1
+    `;
+
+    if (allocation.length === 0) {
+      return res.status(400).json({
+        error: 'No allocation found for this date and session',
+        message: `Booking ${booking_code} is not registered for ${event_date} ${session}`,
+      });
+    }
+
+    const kund_number = allocation[0].kund_number;
 
     // Check for duplicate attendance
     const existing = await sql`
@@ -47,22 +69,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (existing.length > 0) {
       return res.status(409).json({
         error: 'Already marked for this session',
+        alreadyMarked: true,
         scanned_at: existing[0].scanned_at,
-        yagyakarta_name: b.yagyakarta_name,
+        attendee: {
+          yagyakartaName: b.yagyakarta_name,
+          bookingCode: b.booking_code,
+          kundNumber: kund_number,
+          attendeeCount: participantCount,
+          primaryMobile: b.primary_mobile,
+          city: b.city,
+          address: b.address,
+          date: event_date,
+          session,
+        },
       });
     }
-
-    // Get allocated kund for this session
-    const allocation = await sql`
-      SELECT kund_number
-      FROM allocations
-      WHERE booking_id = ${b.id}
-        AND event_date = ${event_date}
-        AND session = ${session}
-      LIMIT 1
-    `;
-
-    const kund_number = allocation.length > 0 ? allocation[0].kund_number : null;
 
     // Record attendance
     await sql`
@@ -75,12 +96,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     `;
 
+    const now = new Date().toISOString();
+
     return res.status(200).json({
       success: true,
-      yagyakarta_name: b.yagyakarta_name,
-      booking_code: b.booking_code,
-      kund_number,
-      participant_count: participantCount,
+      attendee: {
+        yagyakartaName: b.yagyakarta_name,
+        bookingCode: b.booking_code,
+        kundNumber: kund_number,
+        attendeeCount: participantCount,
+        primaryMobile: b.primary_mobile,
+        city: b.city,
+        address: b.address,
+        status: 'admitted',
+        scannedAt: now,
+        date: event_date,
+        session,
+      },
     });
   } catch (err: any) {
     console.error(err);
