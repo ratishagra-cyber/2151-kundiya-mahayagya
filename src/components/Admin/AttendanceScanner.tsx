@@ -73,6 +73,19 @@ export const AttendanceScanner: React.FC<AttendanceScannerProps> = ({
   const [selectedSession, setSelectedSession] = React.useState<string>(currentSession);
   const [manualCode, setManualCode] = React.useState<string>('');
   const [isVerifying, setIsVerifying] = React.useState<boolean>(false);
+
+  // Keep state in sync with parent props when they change
+  React.useEffect(() => {
+    if (currentDate) {
+      setSelectedDate(currentDate);
+    }
+  }, [currentDate]);
+
+  React.useEffect(() => {
+    if (currentSession) {
+      setSelectedSession(currentSession);
+    }
+  }, [currentSession]);
   
   // Feedback states
   const [lastScanSuccess, setLastScanSuccess] = React.useState<ScanResult | null>(null);
@@ -100,7 +113,7 @@ export const AttendanceScanner: React.FC<AttendanceScannerProps> = ({
   const fetchAttendanceLogs = React.useCallback(async () => {
     setLoadingList(true);
     try {
-      const res = await fetch(`/api/admin/attendance?date=${selectedDate}&session=${selectedSession}`);
+      const res = await fetch(`/api/admin/attendance?event_date=${encodeURIComponent(selectedDate)}&date=${encodeURIComponent(selectedDate)}&session=${encodeURIComponent(selectedSession)}`);
       const data = await res.json();
       if (data && data.success) {
         setRecentScans(data.recentScans || []);
@@ -143,15 +156,22 @@ export const AttendanceScanner: React.FC<AttendanceScannerProps> = ({
     setLastScanRejection(null);
 
     try {
+      const payload = {
+        booking_code: cleanCode,
+        event_date: selectedDate,
+        session: selectedSession,
+        // Redundant aliases for compatibility across different handlers
+        bookingCode: cleanCode,
+        eventDate: selectedDate,
+        date: selectedDate,
+        scanned_by: operatorName,
+        scannedBy: operatorName,
+      };
+
       const res = await fetch('/api/admin/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookingCode: cleanCode,
-          date: selectedDate,
-          session: selectedSession,
-          scannedBy: operatorName,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
