@@ -15,11 +15,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Find the booking
+    // Find the booking and count participants
     const booking = await sql`
-      SELECT id, booking_code, yagyakarta_name, participant_count
-      FROM bookings
-      WHERE booking_code = ${booking_code}
+      SELECT 
+        b.id, 
+        b.booking_code, 
+        b.yagyakarta_name,
+        (SELECT COUNT(*)::int FROM participants p WHERE p.booking_id = b.id) as participant_count
+      FROM bookings b
+      WHERE b.booking_code = ${booking_code}
       LIMIT 1
     `;
 
@@ -28,6 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const b = booking[0];
+    const participantCount = b.participant_count || 1;
 
     // Check for duplicate attendance
     const existing = await sql`
@@ -66,7 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         kund_number, attendee_count, scanned_by
       ) VALUES (
         ${b.id}, ${booking_code}, ${event_date}, ${session},
-        ${kund_number}, ${b.participant_count}, ${scanned_by || 'operator'}
+        ${kund_number}, ${participantCount}, ${scanned_by || 'operator'}
       )
     `;
 
@@ -75,7 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       yagyakarta_name: b.yagyakarta_name,
       booking_code: b.booking_code,
       kund_number,
-      participant_count: b.participant_count,
+      participant_count: participantCount,
     });
   } catch (err: any) {
     console.error(err);
